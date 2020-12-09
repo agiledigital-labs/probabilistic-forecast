@@ -7,6 +7,9 @@ const numWeeksOfHistory = 6;
 
 const numSimulations = 1000;
 
+// TODO: Don't hardcode the number of stories here.
+const ticketTarget = 60;
+
 const jiraUrl = 'https://jira.agiledigital.com.au';
 const apiUrl = `${jiraUrl}/rest/api/2`;
 
@@ -84,7 +87,7 @@ const fetchDiscoveryRatio = async () => {
     return ticketsResolvedCount / nonBugTicketsCreatedCount;
 };
 
-const simulations = async (resolvedTicketCounts: readonly number[]) => {
+const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget: number): Promise<readonly number[]> => {
     const results = Array(numSimulations).fill(0);
 
     if (resolvedTicketCounts.every(x => x === 0)) {
@@ -95,9 +98,7 @@ const simulations = async (resolvedTicketCounts: readonly number[]) => {
 
     for (let i = 0; i < numSimulations; i++) {
         let storiesDone = 0;
-
-        // TODO: Don't hardcode the number of stories here.
-        while (storiesDone <= 60) {
+        while (storiesDone <= ticketTarget) {
             const numSprints = resolvedTicketCounts.length;
             storiesDone += resolvedTicketCounts[Math.floor(Math.random() * numSprints)]!;
             results[i]++;
@@ -128,8 +129,10 @@ const main = async () => {
     console.log(`1 bug for every ${bugRatio} non-bug tickets.`);
     console.log(`1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`);
 
-    console.log('Running simulations...');
-    const simulationResults = simulations(resolvedTicketCounts);
+    console.log(`Running ${numSimulations} simulations...`);
+    const simulationResults = await simulations(resolvedTicketCounts, ticketTarget);
+
+    console.log(`Number of sprints required to ship ${ticketTarget} tickets:`);
     console.log(simulationResults);
 };
 
