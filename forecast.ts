@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { inspect } from 'util';
 
 // TODO: Get these from user input.
 const projectJiraID = 'QFXFB';
@@ -14,7 +15,7 @@ const sessionID = process.env.JSESSIONID;
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
     const encodedQuery = encodeURIComponent(searchQuery);
 
-    return fetch(
+    const issuesResp = await fetch(
         // maxResults=0 because we only need the number of issues, which is included in the
         // metadata.
         `${apiUrl}/search?jql=${encodedQuery}&maxResults=0`,
@@ -24,9 +25,15 @@ const fetchIssueCount = async (searchQuery: string): Promise<number> => {
                 'Cookie': `JSESSIONID=${sessionID}`
             },
             "method": "GET",
-        })
-        .then(issuesResp => issuesResp.json())
-        .then(issues => issues.total);
+        });
+
+    const responseBody = await issuesResp.json();
+
+    if (issuesResp.status !== 200) {
+        throw new Error(`Unexpected response from Jira [${issuesResp.statusText}] \n ${inspect(responseBody)}`);
+    }
+
+    return responseBody.total;
 };
 
 // TODO: It would be better to use the date QA was completed for the ticket instead of the date the
