@@ -31,6 +31,8 @@ const fetchIssueCount = async (searchQuery) => {
         .then(issues => issues.total);
 };
 
+// TODO: It would be better to use the date QA was completed for the ticket instead of the date the
+//       ticket was resolved.
 const fetchResolvedTicketsPerSprint = async () => {
     // We want to know how many tickets were completed during each sprint. To make things easier,
     // we're defining a sprint as just any period of two weeks.
@@ -65,10 +67,22 @@ const fetchBugRatio = async () => {
     return otherTicketCount / bugCount;
 };
 
+// "1 new story [created] every X stories [resolved]"
+const fetchDiscoveryRatio = async () => {
+    const nonBugTicketsCreatedQuery = `project = ${projectJiraID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
+
+    const ticketsResolvedQuery = `project = ${projectJiraID} AND resolved >= -${numWeeksOfHistory}w`;
+    const ticketsResolvedCount = await fetchIssueCount(ticketsResolvedQuery);
+
+    return ticketsResolvedCount / nonBugTicketsCreatedCount;
+};
+
 const main = async () => {
     console.log('Fetching ticket counts...');
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
     const bugRatio = await fetchBugRatio();
+    const discoveryRatio = await fetchDiscoveryRatio();
 
     resolvedTicketCounts.forEach(async (ticketCount, idx) => {
         // TODO: Not sure these will be in order. I don't think it matters to the simulation, so I
@@ -77,6 +91,8 @@ const main = async () => {
     });
 
     console.log(`1 bug for every ${bugRatio} non-bug tickets.`);
+
+    console.log(`1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`);
 };
 
 main();
