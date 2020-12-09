@@ -11,6 +11,24 @@ const apiUrl = `${jiraUrl}/rest/api/2`;
 
 const sessionID = process.env.JSESSIONID;
 
+const fetchIssueCount = async (searchQuery) => {
+    const encodedQuery = encodeURIComponent(searchQuery);
+
+    return fetch(
+        // maxResults=0 because we only need the number of issues, which is included in the
+        // metadata.
+        `${apiUrl}/search?jql=${encodedQuery}&maxResults=0`,
+        {
+            "credentials": "include",
+            "headers": {
+                'X-Atlassian-Token': 'no-check',
+                'Cookie': `JSESSIONID=${sessionID}`
+            },
+            "method": "GET",
+            "mode": "cors"
+        });
+};
+
 const fetchResolvedTickets = async () => {
     // We want to know how many tickets were completed during each sprint. To make things easier,
     // we're defining a sprint as just any period of two weeks.
@@ -19,22 +37,11 @@ const fetchResolvedTickets = async () => {
     let resolvedTicketsSearches = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
-        const query = encodeURIComponent(
-            `project = ${projectJiraID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`
-        );
+        const query = 
+            `project = ${projectJiraID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
 
         resolvedTicketsSearches.push(
-            fetch(
-                `${apiUrl}/search?jql=${query}&maxResults=1000`,
-                {
-                    "credentials": "include",
-                    "headers": {
-                        'X-Atlassian-Token': 'no-check',
-                        'Cookie': `JSESSIONID=${sessionID}`
-                    },
-                    "method": "GET",
-                    "mode": "cors"
-                })
+            fetchIssueCount(query)
         );
 
         historyStart -= 2;
