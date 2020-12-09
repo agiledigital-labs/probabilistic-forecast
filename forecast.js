@@ -26,21 +26,23 @@ const fetchIssueCount = async (searchQuery) => {
             },
             "method": "GET",
             "mode": "cors"
-        });
+        })
+        .then(issuesResp => issuesResp.json())
+        .then(issues => issues.total);
 };
 
-const fetchResolvedTickets = async () => {
+const fetchResolvedTicketsPerSprint = async () => {
     // We want to know how many tickets were completed during each sprint. To make things easier,
     // we're defining a sprint as just any period of two weeks.
     let historyStart = -2;
     let historyEnd = 0;
-    let resolvedTicketsSearches = [];
+    let ticketCounts = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
         const query = 
             `project = ${projectJiraID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
 
-        resolvedTicketsSearches.push(
+        ticketCounts.push(
             fetchIssueCount(query)
         );
 
@@ -48,19 +50,33 @@ const fetchResolvedTickets = async () => {
         historyEnd -= 2;
     }
 
-    console.log('Fetching tickets...');
-    return Promise.all(resolvedTicketsSearches);
+    return Promise.all(ticketCounts);
+};
+
+// "1 bug every X stories", which is probably the reciprocal of what you were expecting.
+const fetchBugRatio = async () => {
+    const bugsQuery = `project = ${projectJiraID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const bugCount = await fetchIssueCount(bugsQuery);
+
+    // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
+    const otherTicketsQuery = `project = ${projectJiraID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const otherTicketCount = await fetchIssueCount(otherTicketsQuery);
+
+    return otherTicketCount / bugCount;
 };
 
 const main = async () => {
-    const resolvedTickets = await fetchResolvedTickets();
+    console.log('Fetching ticket counts...');
+    const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
+    const bugRatio = await fetchBugRatio();
 
-    resolvedTickets.forEach(async (ticket, idx) => {
-        const ticketJson = await ticket.json();
+    resolvedTicketCounts.forEach(async (ticketCount, idx) => {
         // TODO: Not sure these will be in order. I don't think it matters to the simulation, so I
         //       didn't bother checking.
-        console.log(`Resolved ${ticketJson.total} tickets in sprint ${idx + 1}.`);
+        console.log(`Resolved ${ticketCount} tickets in sprint ${idx + 1}.`);
     });
+
+    console.log(`1 bug for every ${bugRatio} non-bug tickets.`);
 };
 
 main();
