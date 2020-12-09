@@ -132,8 +132,21 @@ const main = async () => {
     console.log(`Running ${numSimulations} simulations...`);
     const simulationResults = await simulations(resolvedTicketCounts, ticketTarget);
 
-    console.log(`Number of sprints required to ship ${ticketTarget} tickets:`);
-    console.log(simulationResults);
+    console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
+
+    const uniqueResults: Record<string, number> = {};
+    for (const result of simulationResults) {
+        uniqueResults[result] = (uniqueResults[result] || 0) + 1;
+    }
+
+    const keys = Object.keys(uniqueResults);
+
+    console.log(`Best case: ${keys[0]}`);
+    console.log(`Worst case: ${keys[keys.length-1]}`);
+    console.log(`Details:`);
+    for (const uniqueResult of keys) {
+        console.log(`${uniqueResult} sprints (${uniqueResults[uniqueResult]} simulations)`);
+    }
 };
 
 main();
