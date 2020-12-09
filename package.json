@@ -5,11 +5,18 @@
   "devDependencies": {
     "@types/node-fetch": "^2.5.7",
     "ts-node": "^9.1.1",
+    "type-coverage": "^2.14.6",
     "typescript": "^4.1.2"
   },
   "scripts": {
     "build": "tsc",
-    "start": "ts-node forecast.ts"
+    "start": "ts-node forecast.ts",
+    "type-coverage": "type-coverage"
+  },
+  "typeCoverage": {
+    "atLeast": 94.37,
+    "strict": true,
+    "detail": true
   },
   "name": "probabilistic-forecast",
   "license": "MIT",
