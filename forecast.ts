@@ -117,6 +117,7 @@ const main = async () => {
     console.log('Fetching ticket counts...');
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
 
+    // TODO: Incorporate these in the simulation.
     const bugRatio = await fetchBugRatio();
     const discoveryRatio = await fetchDiscoveryRatio();
 
@@ -141,6 +142,7 @@ const main = async () => {
 
     const keys = Object.keys(uniqueResults);
 
+    // TODO: Output likely case given some user-specified confidence threshold.
     console.log(`Best case: ${keys[0]}`);
     console.log(`Worst case: ${keys[keys.length-1]}`);
     console.log(`Details:`);
