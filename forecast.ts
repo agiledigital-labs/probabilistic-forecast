@@ -33,6 +33,7 @@ const fetchIssueCount = async (searchQuery: string): Promise<number> => {
         throw new Error(`Unexpected response from Jira [${issuesResp.statusText}] \n ${inspect(responseBody)}`);
     }
 
+    // TODO parse the response using io-ts.
     return responseBody.total;
 };
 
@@ -85,6 +86,12 @@ const fetchDiscoveryRatio = async () => {
 
 const simulations = async (resolvedTicketCounts: readonly number[]) => {
     const results = Array(numSimulations).fill(0);
+
+    if (resolvedTicketCounts.every(x => x === 0)) {
+        // If every single one of our past sprints completed zero tickets, the loop below will never terminate.
+        // So let's say all our "simulations" conclude that we will ship zero tickets this time too.
+        return results;
+    }
 
     for (let i = 0; i < numSimulations; i++) {
         let storiesDone = 0;
