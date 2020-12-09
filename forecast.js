@@ -6,6 +6,8 @@ const fetch = require('node-fetch');
 const projectJiraID = 'QFXFB';
 const numWeeksOfHistory = 6;
 
+const numSimulations = 1000;
+
 const jiraUrl = 'https://jira.agiledigital.com.au';
 const apiUrl = `${jiraUrl}/rest/api/2`;
 
@@ -78,6 +80,23 @@ const fetchDiscoveryRatio = async () => {
     return ticketsResolvedCount / nonBugTicketsCreatedCount;
 };
 
+const simulations = async (resolvedTicketCounts) => {
+    let results = Array(numSimulations).fill(0);
+
+    for (let i = 0; i < numSimulations; i++) {
+        let storiesDone = 0;
+
+        // TODO: Don't hardcode the number of stories here.
+        while (storiesDone <= 60) {
+            const numSprints = resolvedTicketCounts.length;
+            storiesDone += resolvedTicketCounts[Math.floor(Math.random() * numSprints)];
+            results[i]++;
+        }
+    }
+
+    return results;
+};
+
 const main = async () => {
     console.log('Fetching ticket counts...');
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
@@ -91,8 +110,11 @@ const main = async () => {
     });
 
     console.log(`1 bug for every ${bugRatio} non-bug tickets.`);
-
     console.log(`1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`);
+
+    console.log('Running simulations...');
+    const simulationResults = simulations(resolvedTicketCounts);
+    console.log(simulationResults);
 };
 
 main();
