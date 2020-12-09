@@ -38,7 +38,7 @@ const fetchResolvedTicketsPerSprint = async () => {
     // we're defining a sprint as just any period of two weeks.
     let historyStart = -2;
     let historyEnd = 0;
-    let ticketCounts = [];
+    const ticketCounts = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
         const query = 
