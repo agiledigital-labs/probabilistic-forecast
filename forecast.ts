@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import fetch from 'node-fetch';
 
 // TODO: Get these from user input.
@@ -96,8 +94,14 @@ const simulations = async (resolvedTicketCounts: readonly number[]) => {
 };
 
 const main = async () => {
+    if (sessionID === undefined) {
+        console.log("Usage: JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 npm run start");
+        return;
+    }
+
     console.log('Fetching ticket counts...');
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
+
     const bugRatio = await fetchBugRatio();
     const discoveryRatio = await fetchDiscoveryRatio();
 

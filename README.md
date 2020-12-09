@@ -11,7 +11,7 @@ npm ci
 ## Run
 
 ```
-JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 ./forecast.js
+JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 npm run start
 ```
 
 `JSESSIONID` is from your Jira cookies. TODO: Can we use API tokens instead?
@@ -19,7 +19,7 @@ JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 ./forecast.js
 ## Debug
 
 ```
-NODE_OPTIONS="--inspect-brk" JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 ./forecast.js
+NODE_OPTIONS="--inspect-brk" JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 npm run start
 ```
 
 Then open Chrome dev tools and click the NodeJS icon.
