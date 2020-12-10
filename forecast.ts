@@ -163,7 +163,7 @@ const printPredictions = (lowTicketTarget: number, highTicketTarget: number, sim
     }
 
     console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] || 0) : '?'}% confident all ` +
-      `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
+      `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${resultAboveThreshold} sprints (${Number(resultAboveThreshold) * sprintLengthInWeeks} weeks) to complete.`);
 };
 
 const main = async () => {
