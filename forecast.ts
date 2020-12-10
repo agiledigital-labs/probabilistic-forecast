@@ -81,6 +81,35 @@ const fetchDiscoveryRatio = async () => {
     return ticketsResolvedCount / nonBugTicketsCreatedCount;
 };
 
+/**
+ * @return The expected number of tickets left to complete, as a range.
+ */
+const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
+    // TODO: Don't hardcode the number of stories here.
+    let ticketTarget = 60;
+
+    if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
+        // TODO: handle pagination and get all results instead of assuming they will always be less than 100.
+        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"In Progress\"");
+        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"To Do\"");
+
+        const numberOfInProgressTickets = inProgress.issues.length;
+        const numberOfBacklogTicketsAboveTarget = toDo.issues.map((issue: any) => issue.key).indexOf(jiraTicketID);
+        if (numberOfBacklogTicketsAboveTarget === -1) {
+            throw new Error(`Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`);
+        }
+
+        ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget;
+        console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} in backlog)`);
+    }
+
+    return {
+        lowTicketTarget: ticketTarget,
+        // Adjust to account for the new tickets we expect to be created during future development.
+        highTicketTarget: Math.round(ticketTarget + ticketTarget / bugRatio + ticketTarget / discoveryRatio)
+    };
+};
+
 const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget: number): Promise<readonly number[]> => {
     const results: number[] = Array(numSimulations).fill(0);
 
@@ -102,8 +131,9 @@ const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget
     return results;
 };
 
-const printPredictions = (ticketTarget: number, simulationResults: readonly number[]) => {
-    console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
+const printPredictions = (lowTicketTarget: number, highTicketTarget: number, simulationResults: readonly number[]) => {
+    console.log(`Number of sprints required to ship ${lowTicketTarget} to ${highTicketTarget} tickets ` +
+      `(and the number of simulations that arrived at that result):`);
 
     const percentages: Record<string, number> = {};
     const cumulativePercentages: Record<string, number> = {};
@@ -132,7 +162,7 @@ const printPredictions = (ticketTarget: number, simulationResults: readonly numb
     }
 
     console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] || 0) : '?'}% confident all ` +
-      `${ticketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
+      `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
 };
 
 const main = async () => {
@@ -141,30 +171,12 @@ const main = async () => {
         return;
     }
 
-    // TODO: Don't hardcode the number of stories here.
-    let ticketTarget = 60;
-
-    if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
-        // TODO: handle pagination and get all results instead of assuming they will always be less than 100.
-        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"In Progress\"");
-        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"To Do\"");
-
-        const numberOfInProgressTickets = inProgress.issues.length;
-        const numberOfBacklogTicketsAboveTarget = toDo.issues.map((issue: any) => issue.key).indexOf(jiraTicketID);
-        if (numberOfBacklogTicketsAboveTarget === -1) {
-            throw new Error(`Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`);
-        }
-
-        ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget;
-        console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} in backlog)`);
-    }
+    const bugRatio = await fetchBugRatio();
+    const discoveryRatio = await fetchDiscoveryRatio();
+    const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio);
 
     console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / 2} sprints in ${jiraProjectID}...`);
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
-
-    // TODO: Incorporate these in the simulation.
-    const bugRatio = await fetchBugRatio();
-    const discoveryRatio = await fetchDiscoveryRatio();
 
     resolvedTicketCounts.forEach(async (ticketCount, idx) => {
         // TODO: Not sure these will be in order. I don't think it matters to the simulation, so I
@@ -176,11 +188,11 @@ const main = async () => {
     console.log(`1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`);
 
     console.log(`Running ${numSimulations} simulations...`);
-    const simulationResults = await simulations(resolvedTicketCounts, ticketTarget);
+    const simulationResults = await simulations(resolvedTicketCounts, highTicketTarget);
 
     console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
 
-    printPredictions(ticketTarget,  simulationResults);
+    printPredictions(lowTicketTarget, highTicketTarget,  simulationResults);
 };
 
 main();
