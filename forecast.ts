@@ -24,6 +24,7 @@ const numWeeksOfHistory = 10;
 const confidencePercentageThreshold = 80;
 const numSimulations = 1000;
 const sprintLengthInWeeks = 2;
+const defaultTicketTarget = 60;
 
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
     // maxResults=0 because we only need the number of issues, which is included in the
@@ -61,11 +62,12 @@ const fetchResolvedTicketsPerSprint = async () => {
 
 // "1 bug every X stories", which is probably the reciprocal of what you were expecting.
 const fetchBugRatio = async () => {
+    // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
     const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const bugCount = await fetchIssueCount(bugsQuery);
 
     // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
-    // TODO exclude subtasks and epics here.
+    // TODO: exclude subtasks and epics here.
     const otherTicketsQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const otherTicketCount = await fetchIssueCount(otherTicketsQuery);
 
@@ -74,11 +76,12 @@ const fetchBugRatio = async () => {
 
 // "1 new story [created] every X stories [resolved]"
 const fetchDiscoveryRatio = async () => {
-    // TODO: this should only count tickets that have been created AND placed higher in the backlog than the target ticket.
+    // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
+    // TODO: exclude subtasks and epics here.
     const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
 
-    // TODO exclude subtasks and epics here.
+    // TODO: exclude subtasks and epics here.
     const ticketsResolvedQuery = `project = ${jiraProjectID} AND resolved >= -${numWeeksOfHistory}w`;
     const ticketsResolvedCount = await fetchIssueCount(ticketsResolvedQuery);
 
@@ -88,15 +91,21 @@ const fetchDiscoveryRatio = async () => {
 /**
  * @return The expected number of tickets left to complete, as a range.
  */
-const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
-    // TODO: Don't hardcode the number of stories here.
-    let ticketTarget = 60;
+const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, jiraBoardID: string | undefined, jiraTicketID: string | undefined): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
+    let ticketTarget = defaultTicketTarget;
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
         // TODO: handle pagination and get all results instead of assuming they will always be less than 100.
         // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
         const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"In Progress\"");
         const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"To Do\"");
+
+        if (inProgress.total > inProgress.issues.length) {
+            console.warn("Some in progress tickets excluded.");
+        }
+        if (toDo.total > toDo.issues.length) {
+            console.warn("Some to do tickets excluded.");
+        }
 
         const numberOfInProgressTickets = inProgress.issues.length;
         const numberOfBacklogTicketsAboveTarget = toDo.issues.map((issue: any) => issue.key).indexOf(jiraTicketID);
@@ -107,6 +116,9 @@ const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number): 
         ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget;
         console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} to do)`);
     }
+
+    // TODO: expand this to allow other sorts of targets in addition to a single Jira ticket ID.
+    // Examples: "when will all tickets in epic x be done?", "when will all tickets with label y be done?"
 
     return {
         lowTicketTarget: ticketTarget,
@@ -179,7 +191,7 @@ const main = async () => {
 
     const bugRatio = await fetchBugRatio();
     const discoveryRatio = await fetchDiscoveryRatio();
-    const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio);
+    const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio, jiraBoardID, jiraTicketID);
 
     console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
     console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / sprintLengthInWeeks} sprints in ${jiraProjectID}...`);
