@@ -44,6 +44,7 @@ const fetchResolvedTicketsPerSprint = async () => {
     const ticketCounts: Promise<number>[] = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
+        // TODO exclude epics here.
         const query = 
             `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
 
@@ -64,6 +65,7 @@ const fetchBugRatio = async () => {
     const bugCount = await fetchIssueCount(bugsQuery);
 
     // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
+    // TODO exclude subtasks and epics here.
     const otherTicketsQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const otherTicketCount = await fetchIssueCount(otherTicketsQuery);
 
@@ -76,6 +78,7 @@ const fetchDiscoveryRatio = async () => {
     const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
 
+    // TODO exclude subtasks and epics here.
     const ticketsResolvedQuery = `project = ${jiraProjectID} AND resolved >= -${numWeeksOfHistory}w`;
     const ticketsResolvedCount = await fetchIssueCount(ticketsResolvedQuery);
 
@@ -121,6 +124,7 @@ const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget
         return results;
     }
 
+    // TODO: teach the simulation how to understand if some tickets are specialised and can only be worked on by certain people.
     for (let i = 0; i < numSimulations; i++) {
         let storiesDone = 0;
         while (storiesDone <= ticketTarget) {
