@@ -3,7 +3,7 @@ import JiraApi from 'jira-client';
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
 
-var jira = new JiraApi({
+const jira = new JiraApi({
   protocol: 'https',
   host: process.env.JIRA_HOST || 'jira.agiledigital.com.au',
   username: jiraUsername,
