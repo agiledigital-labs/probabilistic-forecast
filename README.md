@@ -4,6 +4,10 @@ Jira plugin for probabilistic forecasting. (Currently just a command line script
 
 [![Type Coverage](https://img.shields.io/badge/dynamic/json.svg?label=type-coverage&prefix=%E2%89%A5&suffix=%&query=$.typeCoverage.atLeast&uri=https%3A%2F%2Fraw.githubusercontent.com%2Fagiledigital-labs%2Fprobabilistic-forecast%2Fmaster%2Fpackage.json)](https://github.com/plantain-00/type-coverage)
 
+[![dependencies Status](https://david-dm.org/agiledigital-labs/probabilistic-forecast/status.svg)](https://david-dm.org/agiledigital-labs/probabilistic-forecast)
+[![devDependencies Status](https://david-dm.org/agiledigital-labs/probabilistic-forecast/dev-status.svg)](https://david-dm.org/agiledigital-labs/probabilistic-forecast?type=dev)
+[![peerDependencies Status](https://david-dm.org/agiledigital-labs/probabilistic-forecast/peer-status.svg)](https://david-dm.org/agiledigital-labs/probabilistic-forecast?type=peer)
+
 ## Example Output
 
 Let's say you have a ticket ADE-166 some way down your backlog. Let's say that ticket is in project ADE and the ID of the Jira board (kanban) is 74. ADE-166 represents the completion of a feature that you're interested in. You want to know when that feature will be ready. Here's what you do:
