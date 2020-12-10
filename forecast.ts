@@ -175,6 +175,7 @@ const main = async () => {
     const discoveryRatio = await fetchDiscoveryRatio();
     const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio);
 
+    console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
     console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / 2} sprints in ${jiraProjectID}...`);
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
 
@@ -191,8 +192,6 @@ const main = async () => {
 
     console.log(`Running ${numSimulations} simulations...`);
     const simulationResults = await simulations(resolvedTicketCounts, highTicketTarget);
-
-    console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
 
     printPredictions(lowTicketTarget, highTicketTarget,  simulationResults);
 };
