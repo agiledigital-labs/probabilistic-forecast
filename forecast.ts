@@ -17,6 +17,7 @@ const projectJiraID = 'QFXFB';
 const numWeeksOfHistory = 6;
 
 const numSimulations = 1000;
+const sprintLengthInWeeks = 2;
 
 // TODO: Don't hardcode the number of stories here.
 const ticketTarget = 60;
@@ -24,7 +25,7 @@ const ticketTarget = 60;
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
     // maxResults=0 because we only need the number of issues, which is included in the
     // metadata.
-    const issuesResp = await jira.searchJira(searchQuery, {maxResults: 0})
+    const issuesResp = await jira.searchJira(searchQuery, {maxResults: 0});
 
     // TODO parse the response using io-ts.
     return issuesResp.total;
@@ -35,7 +36,7 @@ const fetchIssueCount = async (searchQuery: string): Promise<number> => {
 const fetchResolvedTicketsPerSprint = async () => {
     // We want to know how many tickets were completed during each sprint. To make things easier,
     // we're defining a sprint as just any period of two weeks.
-    let historyStart = -2;
+    let historyStart = -sprintLengthInWeeks;
     let historyEnd = 0;
     const ticketCounts: Promise<number>[] = [];
 
@@ -47,8 +48,8 @@ const fetchResolvedTicketsPerSprint = async () => {
             fetchIssueCount(query)
         );
 
-        historyStart -= 2;
-        historyEnd -= 2;
+        historyStart -= sprintLengthInWeeks;
+        historyEnd -= sprintLengthInWeeks;
     }
 
     return Promise.all(ticketCounts);
