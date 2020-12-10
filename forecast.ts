@@ -72,6 +72,7 @@ const fetchBugRatio = async () => {
 
 // "1 new story [created] every X stories [resolved]"
 const fetchDiscoveryRatio = async () => {
+    // TODO: this should only count tickets that have been created AND placed higher in the backlog than the target ticket.
     const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
 
