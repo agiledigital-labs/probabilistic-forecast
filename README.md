@@ -52,3 +52,9 @@ Then open Chrome dev tools and click the NodeJS icon.
 ```
 npm run type-coverage
 ```
+
+## See Also
+
+ - Inspired by the [Probabilistic Forecasting
+   Spreadsheet](https://docs.google.com/spreadsheets/d/1L-BHVNIAFprYT0auzoBxvR3wI9JQS8wxVHG9XrDR1uQ)
+   from <https://github.com/SkeltonThatcher/bizmetrics-book>.

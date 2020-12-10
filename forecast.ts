@@ -102,6 +102,39 @@ const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget
     return results;
 };
 
+const printPredictions = (ticketTarget: number, simulationResults: readonly number[]) => {
+    console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
+
+    const percentages: Record<string, number> = {};
+    const cumulativePercentages: Record<string, number> = {};
+    let prevCumulativePercentage = 0;
+    let resultAboveThreshold: string | undefined = undefined;
+
+    const uniqueResults: Record<string, number> = {};
+    for (const result of simulationResults) {
+        uniqueResults[result] = (uniqueResults[result] || 0) + 1;
+    }
+
+    const keys = Object.keys(uniqueResults);
+
+    for (const uniqueResult of keys) {
+        percentages[uniqueResult] = (uniqueResults[uniqueResult] || 0) / numSimulations * 100;
+        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] || 0) + prevCumulativePercentage;
+        prevCumulativePercentage = cumulativePercentages[uniqueResult] || 0;
+
+        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] || 0) >= confidencePercentageThreshold) {
+            resultAboveThreshold = uniqueResult;
+        }
+
+        console.log(`${uniqueResult} sprints, ` +
+          `${Math.floor(cumulativePercentages[uniqueResult] || 0)}% confidence ` +
+          `(${uniqueResults[uniqueResult]} simulations)`);
+    }
+
+    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] || 0) : '?'}% confident all ` +
+      `${ticketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
+};
+
 const main = async () => {
     if (jiraUsername === undefined || jiraPassword === undefined || jiraProjectID === undefined) {
         console.log("Usage: JIRA_PROJECT_ID=ADE JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
@@ -145,37 +178,9 @@ const main = async () => {
     console.log(`Running ${numSimulations} simulations...`);
     const simulationResults = await simulations(resolvedTicketCounts, ticketTarget);
 
-    const uniqueResults: Record<string, number> = {};
-    for (const result of simulationResults) {
-        uniqueResults[result] = (uniqueResults[result] || 0) + 1;
-    }
-
-    const keys = Object.keys(uniqueResults);
-
     console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
-    console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
 
-    const percentages : Record<string, number> = {};
-    const cumulativePercentages : Record<string, number> = {};
-    let prevCumulativePercentage = 0;
-    let resultAboveThreshold: string | undefined = undefined;
-
-    for (const uniqueResult of keys) {
-        percentages[uniqueResult] = (uniqueResults[uniqueResult] || 0) / numSimulations * 100;
-        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] || 0) + prevCumulativePercentage;
-        prevCumulativePercentage = cumulativePercentages[uniqueResult] || 0;
-
-        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] || 0) >= confidencePercentageThreshold) {
-            resultAboveThreshold = uniqueResult;
-        }
-
-        console.log(`${uniqueResult} sprints, ` +
-          `${Math.floor(cumulativePercentages[uniqueResult] || 0)}% confidence ` +
-          `(${uniqueResults[uniqueResult]} simulations)`);
-    }
-
-    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] || 0) : '?'}% confident all ` +
-      `${ticketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
+    printPredictions(ticketTarget,  simulationResults);
 };
 
 main();
