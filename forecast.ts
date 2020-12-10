@@ -18,6 +18,7 @@ const numWeeksOfHistory = 10;
 const confidencePercentageThreshold = 80;
 
 const numSimulations = 1000;
+const sprintLengthInWeeks = 2;
 
 // TODO: Don't hardcode the number of stories here.
 const ticketTarget = 60;
@@ -25,7 +26,7 @@ const ticketTarget = 60;
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
     // maxResults=0 because we only need the number of issues, which is included in the
     // metadata.
-    const issuesResp = await jira.searchJira(searchQuery, {maxResults: 0})
+    const issuesResp = await jira.searchJira(searchQuery, {maxResults: 0});
 
     // TODO parse the response using io-ts.
     return issuesResp.total;
@@ -36,9 +37,9 @@ const fetchIssueCount = async (searchQuery: string): Promise<number> => {
 const fetchResolvedTicketsPerSprint = async () => {
     // We want to know how many tickets were completed during each sprint. To make things easier,
     // we're defining a sprint as just any period of two weeks.
-    let historyStart = -2;
+    let historyStart = -sprintLengthInWeeks;
     let historyEnd = 0;
-    const ticketCounts = [];
+    const ticketCounts: Promise<number>[] = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
         const query = 
@@ -48,8 +49,8 @@ const fetchResolvedTicketsPerSprint = async () => {
             fetchIssueCount(query)
         );
 
-        historyStart -= 2;
-        historyEnd -= 2;
+        historyStart -= sprintLengthInWeeks;
+        historyEnd -= sprintLengthInWeeks;
     }
 
     return Promise.all(ticketCounts);
@@ -79,7 +80,7 @@ const fetchDiscoveryRatio = async () => {
 };
 
 const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget: number): Promise<readonly number[]> => {
-    const results = Array(numSimulations).fill(0);
+    const results: number[] = Array(numSimulations).fill(0);
 
     if (resolvedTicketCounts.every(x => x === 0)) {
         // If every single one of our past sprints completed zero tickets, the loop below will never terminate.
