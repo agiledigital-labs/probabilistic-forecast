@@ -14,7 +14,8 @@ const jira = new JiraApi({
 
 // TODO: Get these from user input.
 const projectJiraID = 'QFXFB';
-const numWeeksOfHistory = 6;
+const numWeeksOfHistory = 10;
+const confidencePercentageThreshold = 80;
 
 const numSimulations = 1000;
 
@@ -104,7 +105,7 @@ const main = async () => {
         return;
     }
 
-    console.log('Fetching ticket counts...');
+    console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / 2} sprints in ${projectJiraID}...`);
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
 
     // TODO: Incorporate these in the simulation.
@@ -130,14 +131,32 @@ const main = async () => {
 
     const keys = Object.keys(uniqueResults);
 
-    // TODO: Output likely case given some user-specified confidence threshold.
     console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
     console.log(`Best case: ${keys[0]}`);
     console.log(`Worst case: ${keys[keys.length-1]}`);
     console.log(`Details:`);
+
+    const percentages : Record<string, number> = {};
+    const cumulativePercentages : Record<string, number> = {};
+    let prevCumulativePercentage = 0;
+    let resultAboveThreshold = undefined;
+
     for (const uniqueResult of keys) {
-        console.log(`${uniqueResult} sprints (${uniqueResults[uniqueResult]} simulations)`);
+        percentages[uniqueResult] = (uniqueResults[uniqueResult] ?? 0) / numSimulations * 100;
+        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] ?? 0) + prevCumulativePercentage;
+        prevCumulativePercentage = cumulativePercentages[uniqueResult] ?? 0;
+
+        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] ?? 0) >= confidencePercentageThreshold) {
+            resultAboveThreshold = uniqueResult;
+        }
+
+        console.log(`${uniqueResult} sprints, ` +
+          `${Math.floor(cumulativePercentages[uniqueResult] ?? 0)}% confidence ` +
+          `(${uniqueResults[uniqueResult]} simulations)`);
     }
+
+    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] ?? 0) : '?'}% confident all ` +
+      `${ticketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
 };
 
 main();
