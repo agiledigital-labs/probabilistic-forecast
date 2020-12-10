@@ -95,10 +95,10 @@ const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, j
     let ticketTarget = defaultTicketTarget;
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
-        // TODO: handle pagination and get all results instead of assuming they will always be less than 100.
+        // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
         // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
-        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"In Progress\"");
-        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"To Do\"");
+        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 1000, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"In Progress\"");
+        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 1000, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"To Do\"");
 
         if (inProgress.total > inProgress.issues.length) {
             console.warn("Some in progress tickets excluded.");
@@ -193,6 +193,7 @@ const main = async () => {
     const discoveryRatio = await fetchDiscoveryRatio();
     const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio, jiraBoardID, jiraTicketID);
 
+    // TODO: Remove concept of sprints entirely? We should be able to just use days or weeks.
     console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
     console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / sprintLengthInWeeks} sprints in ${jiraProjectID}...`);
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
