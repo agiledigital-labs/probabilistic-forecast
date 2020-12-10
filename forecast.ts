@@ -91,8 +91,9 @@ const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number): 
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
         // TODO: handle pagination and get all results instead of assuming they will always be less than 100.
-        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"In Progress\"");
-        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"To Do\"");
+        // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
+        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"In Progress\"");
+        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"To Do\"");
 
         const numberOfInProgressTickets = inProgress.issues.length;
         const numberOfBacklogTicketsAboveTarget = toDo.issues.map((issue: any) => issue.key).indexOf(jiraTicketID);
@@ -101,7 +102,7 @@ const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number): 
         }
 
         ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget;
-        console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} in backlog)`);
+        console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} to do)`);
     }
 
     return {
