@@ -37,7 +37,7 @@ const fetchResolvedTicketsPerSprint = async () => {
     // we're defining a sprint as just any period of two weeks.
     let historyStart = -2;
     let historyEnd = 0;
-    const ticketCounts = [];
+    const ticketCounts: Promise<number>[] = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
         const query = 
@@ -78,7 +78,7 @@ const fetchDiscoveryRatio = async () => {
 };
 
 const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget: number): Promise<readonly number[]> => {
-    const results = Array(numSimulations).fill(0);
+    const results: number[] = Array(numSimulations).fill(0);
 
     if (resolvedTicketCounts.every(x => x === 0)) {
         // If every single one of our past sprints completed zero tickets, the loop below will never terminate.
