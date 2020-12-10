@@ -1,8 +1,8 @@
 import JiraApi from 'jira-client';
 
-const jiraHost = process.env.JIRA_HOST || "jira.agiledigital.com.au";
+const jiraHost = process.env.JIRA_HOST ?? "jira.agiledigital.com.au";
 const jiraPort = process.env.JIRA_PORT;
-const jiraProtocol = process.env.JIRA_PROTOCOL || "https";
+const jiraProtocol = process.env.JIRA_PROTOCOL ?? "https";
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
@@ -148,26 +148,26 @@ const printPredictions = (lowTicketTarget: number, highTicketTarget: number, sim
 
     const uniqueResults: Record<string, number> = {};
     for (const result of simulationResults) {
-        uniqueResults[result] = (uniqueResults[result] || 0) + 1;
+        uniqueResults[result] = (uniqueResults[result] ?? 0) + 1;
     }
 
     const keys = Object.keys(uniqueResults);
 
     for (const uniqueResult of keys) {
-        percentages[uniqueResult] = (uniqueResults[uniqueResult] || 0) / numSimulations * 100;
-        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] || 0) + prevCumulativePercentage;
-        prevCumulativePercentage = cumulativePercentages[uniqueResult] || 0;
+        percentages[uniqueResult] = (uniqueResults[uniqueResult] ?? 0) / numSimulations * 100;
+        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] ?? 0) + prevCumulativePercentage;
+        prevCumulativePercentage = cumulativePercentages[uniqueResult] ?? 0;
 
-        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] || 0) >= confidencePercentageThreshold) {
+        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] ?? 0) >= confidencePercentageThreshold) {
             resultAboveThreshold = uniqueResult;
         }
 
-        console.log(`${uniqueResult} sprints, ` +
-          `${Math.floor(cumulativePercentages[uniqueResult] || 0)}% confidence ` +
+        console.log(`${uniqueResult} sprints (${Number(uniqueResult) * sprintLengthInWeeks} weeks), ` +
+          `${Math.floor(cumulativePercentages[uniqueResult] ?? 0)}% confidence ` +
           `(${uniqueResults[uniqueResult]} simulations)`);
     }
 
-    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] || 0) : '?'}% confident all ` +
+    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] ?? 0) : '?'}% confident all ` +
       `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${resultAboveThreshold} sprints (${Number(resultAboveThreshold) * sprintLengthInWeeks} weeks) to complete.`);
 };
 
