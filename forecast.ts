@@ -150,9 +150,6 @@ const main = async () => {
 
     console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
     console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
-    console.log(`Best case: ${keys[0]}`);
-    console.log(`Worst case: ${keys[keys.length-1]}`);
-    console.log(`Details:`);
 
     const percentages : Record<string, number> = {};
     const cumulativePercentages : Record<string, number> = {};
