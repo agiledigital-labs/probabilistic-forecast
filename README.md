@@ -11,15 +11,13 @@ npm ci
 ## Run
 
 ```
-JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 npm run start
+JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
-
-`JSESSIONID` is from your Jira cookies. TODO: Can we use API tokens instead?
 
 ## Debug
 
 ```
-NODE_OPTIONS="--inspect-brk" JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 npm run start
+NODE_OPTIONS="--inspect-brk" JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 Then open Chrome dev tools and click the NodeJS icon.
