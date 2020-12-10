@@ -2,6 +2,9 @@ import JiraApi from 'jira-client';
 
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
+const jiraProjectID = process.env.JIRA_PROJECT_ID;
+const jiraBoardID = process.env.JIRA_BOARD_ID;
+const jiraTicketID = process.env.JIRA_TICKET_ID;
 
 const jira = new JiraApi({
   protocol: 'https',
@@ -13,15 +16,10 @@ const jira = new JiraApi({
 });
 
 // TODO: Get these from user input.
-const projectJiraID = 'QFXFB';
 const numWeeksOfHistory = 10;
 const confidencePercentageThreshold = 80;
-
 const numSimulations = 1000;
 const sprintLengthInWeeks = 2;
-
-// TODO: Don't hardcode the number of stories here.
-const ticketTarget = 60;
 
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
     // maxResults=0 because we only need the number of issues, which is included in the
@@ -43,7 +41,7 @@ const fetchResolvedTicketsPerSprint = async () => {
 
     while (historyStart >= -1 * numWeeksOfHistory) {
         const query = 
-            `project = ${projectJiraID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
+            `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
 
         ticketCounts.push(
             fetchIssueCount(query)
@@ -58,11 +56,11 @@ const fetchResolvedTicketsPerSprint = async () => {
 
 // "1 bug every X stories", which is probably the reciprocal of what you were expecting.
 const fetchBugRatio = async () => {
-    const bugsQuery = `project = ${projectJiraID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const bugCount = await fetchIssueCount(bugsQuery);
 
     // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
-    const otherTicketsQuery = `project = ${projectJiraID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const otherTicketsQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const otherTicketCount = await fetchIssueCount(otherTicketsQuery);
 
     return otherTicketCount / bugCount;
@@ -70,10 +68,10 @@ const fetchBugRatio = async () => {
 
 // "1 new story [created] every X stories [resolved]"
 const fetchDiscoveryRatio = async () => {
-    const nonBugTicketsCreatedQuery = `project = ${projectJiraID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
 
-    const ticketsResolvedQuery = `project = ${projectJiraID} AND resolved >= -${numWeeksOfHistory}w`;
+    const ticketsResolvedQuery = `project = ${jiraProjectID} AND resolved >= -${numWeeksOfHistory}w`;
     const ticketsResolvedCount = await fetchIssueCount(ticketsResolvedQuery);
 
     return ticketsResolvedCount / nonBugTicketsCreatedCount;
@@ -101,12 +99,30 @@ const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget
 };
 
 const main = async () => {
-    if (jiraUsername === undefined || jiraPassword === undefined) {
-        console.log("Usage: JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
+    if (jiraUsername === undefined || jiraPassword === undefined || jiraProjectID === undefined) {
+        console.log("Usage: JIRA_PROJECT_ID=ADE JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
         return;
     }
 
-    console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / 2} sprints in ${projectJiraID}...`);
+    // TODO: Don't hardcode the number of stories here.
+    let ticketTarget = 60;
+
+    if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
+        // TODO: handle pagination and get all results instead of assuming they will always be less than 100.
+        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"In Progress\"");
+        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 100, "statusCategory = \"To Do\"");
+
+        const numberOfInProgressTickets = inProgress.issues.length;
+        const numberOfBacklogTicketsAboveTarget = toDo.issues.map((issue: any) => issue.key).indexOf(jiraTicketID);
+        if (numberOfBacklogTicketsAboveTarget === -1) {
+            throw new Error(`Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`);
+        }
+
+        ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget;
+        console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} in backlog)`);
+    }
+
+    console.log(`Fetching ticket counts for the last ${numWeeksOfHistory / 2} sprints in ${jiraProjectID}...`);
     const resolvedTicketCounts = await fetchResolvedTicketsPerSprint();
 
     // TODO: Incorporate these in the simulation.
@@ -132,6 +148,7 @@ const main = async () => {
 
     const keys = Object.keys(uniqueResults);
 
+    console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
     console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
     console.log(`Best case: ${keys[0]}`);
     console.log(`Worst case: ${keys[keys.length-1]}`);
@@ -143,20 +160,20 @@ const main = async () => {
     let resultAboveThreshold: string | undefined = undefined;
 
     for (const uniqueResult of keys) {
-        percentages[uniqueResult] = (uniqueResults[uniqueResult] ?? 0) / numSimulations * 100;
-        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] ?? 0) + prevCumulativePercentage;
-        prevCumulativePercentage = cumulativePercentages[uniqueResult] ?? 0;
+        percentages[uniqueResult] = (uniqueResults[uniqueResult] || 0) / numSimulations * 100;
+        cumulativePercentages[uniqueResult] = (percentages[uniqueResult] || 0) + prevCumulativePercentage;
+        prevCumulativePercentage = cumulativePercentages[uniqueResult] || 0;
 
-        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] ?? 0) >= confidencePercentageThreshold) {
+        if (!resultAboveThreshold && (cumulativePercentages[uniqueResult] || 0) >= confidencePercentageThreshold) {
             resultAboveThreshold = uniqueResult;
         }
 
         console.log(`${uniqueResult} sprints, ` +
-          `${Math.floor(cumulativePercentages[uniqueResult] ?? 0)}% confidence ` +
+          `${Math.floor(cumulativePercentages[uniqueResult] || 0)}% confidence ` +
           `(${uniqueResults[uniqueResult]} simulations)`);
     }
 
-    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] ?? 0) : '?'}% confident all ` +
+    console.log(`We are ${resultAboveThreshold ? Math.floor(cumulativePercentages[resultAboveThreshold] || 0) : '?'}% confident all ` +
       `${ticketTarget} tickets will take no more than ${resultAboveThreshold} sprints to complete.`);
 };
 
