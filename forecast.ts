@@ -1,4 +1,4 @@
-import JiraApi, {JsonResponse} from 'jira-client';
+import JiraApi from 'jira-client';
 
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
