@@ -184,8 +184,10 @@ const main = async () => {
         console.log(`Resolved ${ticketCount} tickets in sprint ${idx + 1}.`);
     });
 
-    console.log(`1 bug for every ${bugRatio} non-bug tickets.`);
+    console.log(`1 bug ticket created for every ${bugRatio} non-bug tickets.`);
     console.log(`1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`);
+    console.log(`If the team continues to create new tickets at this rate, we predict the ${lowTicketTarget} outstanding tickets ` +
+      `will have grown to ${highTicketTarget} tickets by the time they have all been completed.`);
 
     console.log(`Running ${numSimulations} simulations...`);
     const simulationResults = await simulations(resolvedTicketCounts, highTicketTarget);
