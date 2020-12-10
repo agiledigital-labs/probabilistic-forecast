@@ -1,5 +1,8 @@
 import JiraApi from 'jira-client';
 
+const jiraHost = process.env.JIRA_HOST || "jira.agiledigital.com.au";
+const jiraPort = process.env.JIRA_PORT;
+const jiraProtocol = process.env.JIRA_PROTOCOL || "https";
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
@@ -7,8 +10,9 @@ const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
 
 const jira = new JiraApi({
-  protocol: 'https',
-  host: process.env.JIRA_HOST || 'jira.agiledigital.com.au',
+  protocol: jiraProtocol,
+  host: jiraHost,
+  port: jiraPort,
   username: jiraUsername,
   password: jiraPassword,
   apiVersion: '2',
