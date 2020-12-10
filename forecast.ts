@@ -1,4 +1,4 @@
-import JiraApi from 'jira-client';
+import JiraApi, {JsonResponse} from 'jira-client';
 
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
@@ -140,7 +140,7 @@ const main = async () => {
     const percentages : Record<string, number> = {};
     const cumulativePercentages : Record<string, number> = {};
     let prevCumulativePercentage = 0;
-    let resultAboveThreshold = undefined;
+    let resultAboveThreshold: string | undefined = undefined;
 
     for (const uniqueResult of keys) {
         percentages[uniqueResult] = (uniqueResults[uniqueResult] ?? 0) / numSimulations * 100;
