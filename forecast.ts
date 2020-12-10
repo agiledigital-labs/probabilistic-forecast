@@ -1,5 +1,16 @@
-import fetch from 'node-fetch';
-import { inspect } from 'util';
+import JiraApi from 'jira-client';
+
+const jiraUsername = process.env.JIRA_USERNAME;
+const jiraPassword = process.env.JIRA_PASSWORD;
+
+var jira = new JiraApi({
+  protocol: 'https',
+  host: process.env.JIRA_HOST || 'jira.agiledigital.com.au',
+  username: jiraUsername,
+  password: jiraPassword,
+  apiVersion: '2',
+  strictSSL: true
+});
 
 // TODO: Get these from user input.
 const projectJiraID = 'QFXFB';
@@ -10,34 +21,13 @@ const numSimulations = 1000;
 // TODO: Don't hardcode the number of stories here.
 const ticketTarget = 60;
 
-const jiraUrl = 'https://jira.agiledigital.com.au';
-const apiUrl = `${jiraUrl}/rest/api/2`;
-
-const sessionID = process.env.JSESSIONID;
-
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
-    const encodedQuery = encodeURIComponent(searchQuery);
-
-    const issuesResp = await fetch(
-        // maxResults=0 because we only need the number of issues, which is included in the
-        // metadata.
-        `${apiUrl}/search?jql=${encodedQuery}&maxResults=0`,
-        {
-            "headers": {
-                'X-Atlassian-Token': 'no-check',
-                'Cookie': `JSESSIONID=${sessionID}`
-            },
-            "method": "GET",
-        });
-
-    const responseBody = await issuesResp.json();
-
-    if (issuesResp.status !== 200) {
-        throw new Error(`Unexpected response from Jira [${issuesResp.statusText}] \n ${inspect(responseBody)}`);
-    }
+    // maxResults=0 because we only need the number of issues, which is included in the
+    // metadata.
+    const issuesResp = await jira.searchJira(searchQuery, {maxResults: 0})
 
     // TODO parse the response using io-ts.
-    return responseBody.total;
+    return issuesResp.total;
 };
 
 // TODO: It would be better to use the date QA was completed for the ticket instead of the date the
@@ -109,8 +99,8 @@ const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget
 };
 
 const main = async () => {
-    if (sessionID === undefined) {
-        console.log("Usage: JSESSIONID=ABCDEF012345ABCDEF012345ABCDEF01 npm run start");
+    if (jiraUsername === undefined || jiraPassword === undefined) {
+        console.log("Usage: JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
         return;
     }
 
@@ -133,8 +123,6 @@ const main = async () => {
     console.log(`Running ${numSimulations} simulations...`);
     const simulationResults = await simulations(resolvedTicketCounts, ticketTarget);
 
-    console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
-
     const uniqueResults: Record<string, number> = {};
     for (const result of simulationResults) {
         uniqueResults[result] = (uniqueResults[result] || 0) + 1;
@@ -143,6 +131,7 @@ const main = async () => {
     const keys = Object.keys(uniqueResults);
 
     // TODO: Output likely case given some user-specified confidence threshold.
+    console.log(`Number of sprints required to ship ${ticketTarget} tickets (and the number of simulations that arrived at that result):`);
     console.log(`Best case: ${keys[0]}`);
     console.log(`Worst case: ${keys[keys.length-1]}`);
     console.log(`Details:`);
