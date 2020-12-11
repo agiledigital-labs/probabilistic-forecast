@@ -14,7 +14,12 @@ Jira plugin for probabilistic forecasting. (Currently just a command line script
 Let's say you have a ticket ADE-166 some way down your backlog. Let's say that ticket is in project ADE and the ID of the Jira board (kanban) is 74. ADE-166 represents the completion of a feature that you're interested in. You want to know when that feature will be ready. Here's what you do:
 
 ```
-> JIRA_PROJECT_ID="ADE" JIRA_TICKET_ID="ADE-166" JIRA_BOARD_ID="74" JIRA_USERNAME=${JIRA_USERNAME} JIRA_PASSWORD=${JIRA_PASSWORD} npm run start                                                                  
+$ JIRA_PROJECT_ID="ADE" \
+> JIRA_TICKET_ID="ADE-166" \
+> JIRA_BOARD_ID="74" \
+> JIRA_USERNAME=${JIRA_USERNAME} \
+> JIRA_PASSWORD=${JIRA_PASSWORD} \
+> npm run start
 27 total tickets ahead of ADE-166 (21 in progress + 6 to do)
 Sprint length is 2 weeks
 Fetching ticket counts for the last 5 sprints in ADE...
@@ -39,6 +44,28 @@ Number of sprints required to ship 27 to 61 tickets (and the number of simulatio
 We are 89% confident all 27 to 61 tickets will take no more than 11 sprints (22 weeks) to complete.
 ```
 
+## Other Environment Variables
+
+
+ - `NUM_WEEKS_OF_HISTORY`
+   - The number of weeks of Jira history to use for the simulations and other
+     predictions.
+   - Default: 10
+ - `CONFIDENCE_PERCENTAGE_THRESHOLD`
+   - The prediction with likelihood just above this level is highlighted in the output.
+   - Default: 80
+ - `NUM_SIMULATIONS`
+   - The number of rounds of Monte Carlo simulation to perform.
+   - Default: 1000
+ - `SPRINT_LENGTH_IN_WEEKS`
+   - The number of weeks in a sprint for the project.
+   - Default: 2
+ - `TICKET_TARGET`
+   - Will predict how long the team will take to complete this many tickets *from the current
+     in-progress tickets*. This number will be adjusted to account for the rate of new tickets
+     being created. Ignored if `JIRA_TICKET_ID` and `JIRA_BOARD_ID` are set.
+   - Default: 60
+
 ## Install
 
 ```
@@ -49,13 +76,13 @@ npm ci
 ## Run
 
 ```
-JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
+JIRA_PROJECT_ID=ABC JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 ## Debug
 
 ```
-NODE_OPTIONS="--inspect-brk" JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
+NODE_OPTIONS="--inspect-brk" JIRA_PROJECT_ID=ABC JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 Then open Chrome dev tools and click the NodeJS icon.

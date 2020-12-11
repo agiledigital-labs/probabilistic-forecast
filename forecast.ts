@@ -8,6 +8,11 @@ const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
 const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
+const numWeeksOfHistory = Number.parseInt(process.env.NUM_WEEKS_OF_HISTORY ?? '10');
+const confidencePercentageThreshold = Number.parseInt(process.env.CONFIDENCE_PERCENTAGE_THRESHOLD ?? '80');
+const numSimulations = Number.parseInt(process.env.NUM_SIMULATIONS ?? '1000');
+const sprintLengthInWeeks = Number.parseInt(process.env.SPRINT_LENGTH_IN_WEEKS ?? '2');
+const userSuppliedTicketTarget = Number.parseInt(process.env.TICKET_TARGET ?? '60');
 
 const jira = new JiraApi({
   protocol: jiraProtocol,
@@ -18,13 +23,6 @@ const jira = new JiraApi({
   apiVersion: '2',
   strictSSL: true
 });
-
-// TODO: Get these from user input.
-const numWeeksOfHistory = 10;
-const confidencePercentageThreshold = 80;
-const numSimulations = 1000;
-const sprintLengthInWeeks = 2;
-const defaultTicketTarget = 60;
 
 const fetchIssueCount = async (searchQuery: string): Promise<number> => {
     // maxResults=0 because we only need the number of issues, which is included in the
@@ -92,7 +90,7 @@ const fetchDiscoveryRatio = async () => {
  * @return The expected number of tickets left to complete, as a range.
  */
 const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, jiraBoardID: string | undefined, jiraTicketID: string | undefined): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
-    let ticketTarget = defaultTicketTarget;
+    let ticketTarget = userSuppliedTicketTarget;
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
         // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
