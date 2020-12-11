@@ -194,7 +194,7 @@ const printPredictions = (lowTicketTarget: number, highTicketTarget: number, sim
 
 const main = async () => {
     if (jiraUsername === undefined || jiraPassword === undefined || jiraProjectID === undefined || jiraBoardID === undefined) {
-        console.log("Usage: JIRA_PROJECT_ID=ADE JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
+        console.log("Usage: JIRA_PROJECT_ID=ADE JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
         return;
     }
 
