@@ -76,13 +76,13 @@ npm ci
 ## Run
 
 ```
-JIRA_PROJECT_ID=ABC JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
+JIRA_PROJECT_ID=ABC JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 ## Debug
 
 ```
-NODE_OPTIONS="--inspect-brk" JIRA_PROJECT_ID=ABC JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
+NODE_OPTIONS="--inspect-brk" JIRA_PROJECT_ID=ABC JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 Then open Chrome dev tools and click the NodeJS icon.
