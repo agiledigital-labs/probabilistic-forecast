@@ -87,26 +87,32 @@ const fetchDiscoveryRatio = async () => {
 };
 
 /**
+ * Returns all tickets (issue keys) for the specified board in the specified status. Handles pagination with the Jira API and returns everything.
+ */
+const issuesForBoard = async (jiraBoardID: string, statusCategory: "In Progress" | "To Do"): Promise<ReadonlyArray<string>> => {
+    // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
+    const response = await jira.getIssuesForBoard(jiraBoardID, undefined, 1000, `issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = "${statusCategory}"`);
+
+    if (response.total > response.issues.length) {
+        console.warn(`Some ${statusCategory} tickets excluded.`);
+    }
+
+    return response.issues.map((issue: any) => issue.key);
+}
+
+/**
  * @return The expected number of tickets left to complete, as a range.
  */
 const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, jiraBoardID: string | undefined, jiraTicketID: string | undefined): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
     let ticketTarget = userSuppliedTicketTarget;
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
-        // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
         // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
-        const inProgress = await jira.getIssuesForBoard(jiraBoardID, undefined, 1000, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"In Progress\"");
-        const toDo = await jira.getIssuesForBoard(jiraBoardID, undefined, 1000, "issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = \"To Do\"");
+        const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
+        const toDo = await issuesForBoard(jiraBoardID, "To Do");
 
-        if (inProgress.total > inProgress.issues.length) {
-            console.warn("Some in progress tickets excluded.");
-        }
-        if (toDo.total > toDo.issues.length) {
-            console.warn("Some to do tickets excluded.");
-        }
-
-        const numberOfInProgressTickets = inProgress.issues.length;
-        const numberOfBacklogTicketsAboveTarget = toDo.issues.map((issue: any) => issue.key).indexOf(jiraTicketID);
+        const numberOfInProgressTickets = inProgress.length;
+        const numberOfBacklogTicketsAboveTarget = toDo.indexOf(jiraTicketID);
         if (numberOfBacklogTicketsAboveTarget === -1) {
             throw new Error(`Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`);
         }
