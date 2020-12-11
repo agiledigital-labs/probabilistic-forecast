@@ -24,13 +24,14 @@ const jira = new JiraApi({
   strictSSL: true
 });
 
-const fetchIssueCount = async (searchQuery: string): Promise<number> => {
-    // maxResults=0 because we only need the number of issues, which is included in the
-    // metadata.
-    const issuesResp = await jira.searchJira(searchQuery, {maxResults: 0});
+type TicketResponse = {
+    readonly total: number;
+    readonly issues: ReadonlyArray<string>;
+};
 
-    // TODO parse the response using io-ts.
-    return issuesResp.total;
+const issuesForSearchQuery = async (searchQuery: string, maxResults: number = 1000): Promise<TicketResponse> => {
+    const issuesResp = await jira.searchJira(searchQuery, { maxResults });
+    return parseJiraResponse(issuesResp);
 };
 
 // TODO: It would be better to use the date QA was completed for the ticket instead of the date the
@@ -48,7 +49,7 @@ const fetchResolvedTicketsPerSprint = async () => {
           `AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
 
         ticketCounts.push(
-            fetchIssueCount(query)
+            issuesForSearchQuery(query, 0).then(r => r.total)
         );
 
         historyStart -= sprintLengthInWeeks;
@@ -59,37 +60,45 @@ const fetchResolvedTicketsPerSprint = async () => {
 };
 
 // "1 bug every X stories", which is probably the reciprocal of what you were expecting.
-const fetchBugRatio = async () => {
+const fetchBugRatio = async (_jiraTicketID: string | undefined, _inProgress: TicketResponse, _toDo: TicketResponse) => {
     // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
     const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
-    const bugCount = await fetchIssueCount(bugsQuery);
+    const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
 
     // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
     const otherTicketsQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
       `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
-    const otherTicketCount = await fetchIssueCount(otherTicketsQuery);
+    const otherTicketCount = (await issuesForSearchQuery(otherTicketsQuery, 0)).total;
 
     return otherTicketCount / bugCount;
 };
 
 // "1 new story [created] every X stories [resolved]"
-const fetchDiscoveryRatio = async () => {
+const fetchDiscoveryRatio = async (_jiraTicketID: string | undefined, _inProgress: TicketResponse, _toDo: TicketResponse) => {
     // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
     const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
       `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
-    const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
+    const nonBugTicketsCreatedCount = (await issuesForSearchQuery(nonBugTicketsCreatedQuery, 0)).total;
 
     const ticketsResolvedQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
       `AND issuetype != Epic AND resolved >= -${numWeeksOfHistory}w`;
-    const ticketsResolvedCount = await fetchIssueCount(ticketsResolvedQuery);
+    const ticketsResolvedCount = (await issuesForSearchQuery(ticketsResolvedQuery, 0)).total;
 
     return ticketsResolvedCount / nonBugTicketsCreatedCount;
+};
+
+const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
+    // TODO parse the response using io-ts.
+    return {
+        issues: response.issues.map((issue: any) => issue.key),
+        total: response.total
+    }
 };
 
 /**
  * Returns all tickets (issue keys) for the specified board in the specified status. Handles pagination with the Jira API and returns everything.
  */
-const issuesForBoard = async (jiraBoardID: string, statusCategory: "In Progress" | "To Do"): Promise<ReadonlyArray<string>> => {
+const issuesForBoard = async (jiraBoardID: string, statusCategory: "In Progress" | "To Do"): Promise<TicketResponse> => {
     // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
     const response = await jira.getIssuesForBoard(jiraBoardID, undefined, 1000, `issuetype in standardIssueTypes() and issuetype != Epic and statusCategory = "${statusCategory}"`);
 
@@ -97,22 +106,18 @@ const issuesForBoard = async (jiraBoardID: string, statusCategory: "In Progress"
         console.warn(`Some ${statusCategory} tickets excluded.`);
     }
 
-    return response.issues.map((issue: any) => issue.key);
-}
+    return parseJiraResponse(response);
+};
 
 /**
  * @return The expected number of tickets left to complete, as a range.
  */
-const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, jiraBoardID: string | undefined, jiraTicketID: string | undefined): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
+const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, jiraBoardID: string | undefined, jiraTicketID: string | undefined, inProgress: TicketResponse, toDo: TicketResponse): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
     let ticketTarget = userSuppliedTicketTarget;
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
-        // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
-        const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
-        const toDo = await issuesForBoard(jiraBoardID, "To Do");
-
-        const numberOfInProgressTickets = inProgress.length;
-        const numberOfBacklogTicketsAboveTarget = toDo.indexOf(jiraTicketID);
+        const numberOfInProgressTickets = inProgress.total;
+        const numberOfBacklogTicketsAboveTarget = toDo.issues.indexOf(jiraTicketID);
         if (numberOfBacklogTicketsAboveTarget === -1) {
             throw new Error(`Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`);
         }
@@ -188,14 +193,17 @@ const printPredictions = (lowTicketTarget: number, highTicketTarget: number, sim
 };
 
 const main = async () => {
-    if (jiraUsername === undefined || jiraPassword === undefined || jiraProjectID === undefined) {
+    if (jiraUsername === undefined || jiraPassword === undefined || jiraProjectID === undefined || jiraBoardID === undefined) {
         console.log("Usage: JIRA_PROJECT_ID=ADE JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
         return;
     }
 
-    const bugRatio = await fetchBugRatio();
-    const discoveryRatio = await fetchDiscoveryRatio();
-    const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio, jiraBoardID, jiraTicketID);
+    // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
+    const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
+    const toDo = await issuesForBoard(jiraBoardID, "To Do");
+    const bugRatio = await fetchBugRatio(jiraTicketID, inProgress, toDo);
+    const discoveryRatio = await fetchDiscoveryRatio(jiraTicketID, inProgress, toDo);
+    const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio, jiraBoardID, jiraTicketID, inProgress, toDo);
 
     // TODO: Remove concept of sprints entirely? We should be able to just use days or weeks.
     console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
