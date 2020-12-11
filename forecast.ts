@@ -43,9 +43,9 @@ const fetchResolvedTicketsPerSprint = async () => {
     const ticketCounts: Promise<number>[] = [];
 
     while (historyStart >= -1 * numWeeksOfHistory) {
-        // TODO exclude epics here.
-        const query = 
-            `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
+        const query =
+          `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
+          `AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
 
         ticketCounts.push(
             fetchIssueCount(query)
@@ -65,8 +65,8 @@ const fetchBugRatio = async () => {
     const bugCount = await fetchIssueCount(bugsQuery);
 
     // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
-    // TODO: exclude subtasks and epics here.
-    const otherTicketsQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const otherTicketsQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
+      `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
     const otherTicketCount = await fetchIssueCount(otherTicketsQuery);
 
     return otherTicketCount / bugCount;
@@ -75,12 +75,12 @@ const fetchBugRatio = async () => {
 // "1 new story [created] every X stories [resolved]"
 const fetchDiscoveryRatio = async () => {
     // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
-    // TODO: exclude subtasks and epics here.
-    const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND NOT issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+    const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
+      `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
     const nonBugTicketsCreatedCount = await fetchIssueCount(nonBugTicketsCreatedQuery);
 
-    // TODO: exclude subtasks and epics here.
-    const ticketsResolvedQuery = `project = ${jiraProjectID} AND resolved >= -${numWeeksOfHistory}w`;
+    const ticketsResolvedQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
+      `AND issuetype != Epic AND resolved >= -${numWeeksOfHistory}w`;
     const ticketsResolvedCount = await fetchIssueCount(ticketsResolvedQuery);
 
     return ticketsResolvedCount / nonBugTicketsCreatedCount;
