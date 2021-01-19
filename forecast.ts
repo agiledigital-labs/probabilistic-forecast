@@ -122,8 +122,9 @@ const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, j
             throw new Error(`Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`);
         }
 
-        ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget;
-        console.log(`${ticketTarget} total tickets ahead of ${jiraTicketID} (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} to do)`);
+        // + 1 to include the target ticket itself.
+        ticketTarget = numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget + 1;
+        console.log(`${ticketTarget} total tickets until ${jiraTicketID} is to be completed (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} above in the backlog + ${jiraTicketID} itself)`);
     }
 
     // TODO: expand this to allow other sorts of targets in addition to a single Jira ticket ID.
