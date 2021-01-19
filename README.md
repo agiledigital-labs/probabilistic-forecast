@@ -65,6 +65,14 @@ We are 89% confident all 27 to 61 tickets will take no more than 11 sprints (22 
      in-progress tickets*. This number will be adjusted to account for the rate of new tickets
      being created. Ignored if `JIRA_TICKET_ID` and `JIRA_BOARD_ID` are set.
    - Default: 60
+ - `BUG_RATIO`
+   - Override the rate of bugs being discovered.
+   - Will expect 1 bug ticket to be created for every `$BUG_RATIO` stories.
+   - Optional
+ - `DISCOVERY_RATIO`
+   - Override the rate of new story tickets being created.
+   - Will expect 1 story to be created for every `$DISCOVERY_RATIO` stories resolved.
+   - Optional
 
 ## Install
 

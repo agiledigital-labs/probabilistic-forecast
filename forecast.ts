@@ -13,6 +13,8 @@ const confidencePercentageThreshold = Number.parseInt(process.env.CONFIDENCE_PER
 const numSimulations = Number.parseInt(process.env.NUM_SIMULATIONS ?? '1000');
 const sprintLengthInWeeks = Number.parseInt(process.env.SPRINT_LENGTH_IN_WEEKS ?? '2');
 const userSuppliedTicketTarget = Number.parseInt(process.env.TICKET_TARGET ?? '60');
+const bugRatioOverride = process.env.BUG_RATIO ? Number.parseInt(process.env.BUG_RATIO) : undefined;
+const discoveryRatioOverride = process.env.DISCOVERY_RATIO ? Number.parseInt(process.env.DISCOVERY_RATIO) : undefined;
 
 const jira = new JiraApi({
   protocol: jiraProtocol,
@@ -202,8 +204,8 @@ const main = async () => {
     // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
     const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
     const toDo = await issuesForBoard(jiraBoardID, "To Do");
-    const bugRatio = await fetchBugRatio(jiraTicketID, inProgress, toDo);
-    const discoveryRatio = await fetchDiscoveryRatio(jiraTicketID, inProgress, toDo);
+    const bugRatio = bugRatioOverride ?? await fetchBugRatio(jiraTicketID, inProgress, toDo);
+    const discoveryRatio = discoveryRatioOverride ?? await fetchDiscoveryRatio(jiraTicketID, inProgress, toDo);
     const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(bugRatio, discoveryRatio, jiraBoardID, jiraTicketID, inProgress, toDo);
 
     // TODO: Remove concept of sprints entirely? We should be able to just use days or weeks.
