@@ -202,6 +202,7 @@ const main = async () => {
     }
 
     // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
+    // TODO: Include tickets in Resolved in the inProgress count, since they still need to be QA'd.
     const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
     const toDo = await issuesForBoard(jiraBoardID, "To Do");
     const bugRatio = bugRatioOverride ?? await fetchBugRatio(jiraTicketID, inProgress, toDo);
