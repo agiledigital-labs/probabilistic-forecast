@@ -38,7 +38,7 @@ const issuesForSearchQuery = async (searchQuery: string, maxResults: number = 10
 
 // TODO: It would be better to use the date QA was completed for the ticket instead of the date the
 //       ticket was resolved.
-const fetchResolvedTicketsPerSprint = async () => {
+const fetchResolvedTicketsPerSprint = async (): Promise<number[]> => {
     // We want to know how many tickets were completed during each sprint. To make things easier,
     // we're defining a sprint as just any period of two weeks.
     let historyStart = -sprintLengthInWeeks;
@@ -62,7 +62,7 @@ const fetchResolvedTicketsPerSprint = async () => {
 };
 
 // "1 bug every X stories", which is probably the reciprocal of what you were expecting.
-const fetchBugRatio = async (_jiraTicketID: string | undefined, _inProgress: TicketResponse, _toDo: TicketResponse) => {
+const fetchBugRatio = async (_jiraTicketID: string | undefined, _inProgress: TicketResponse, _toDo: TicketResponse): Promise<number> => {
     // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
     const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
     const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
@@ -76,7 +76,7 @@ const fetchBugRatio = async (_jiraTicketID: string | undefined, _inProgress: Tic
 };
 
 // "1 new story [created] every X stories [resolved]"
-const fetchDiscoveryRatio = async (_jiraTicketID: string | undefined, _inProgress: TicketResponse, _toDo: TicketResponse) => {
+const fetchDiscoveryRatio = async (_jiraTicketID: string | undefined, _inProgress: TicketResponse, _toDo: TicketResponse): Promise<number> => {
     // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
     const nonBugTicketsCreatedQuery = `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
       `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
@@ -114,7 +114,12 @@ const issuesForBoard = async (jiraBoardID: string, statusCategory: "In Progress"
 /**
  * @return The expected number of tickets left to complete, as a range.
  */
-const calculateTicketTarget = async (bugRatio: number, discoveryRatio: number, jiraBoardID: string | undefined, jiraTicketID: string | undefined, inProgress: TicketResponse, toDo: TicketResponse): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
+const calculateTicketTarget = async (bugRatio: number,
+                                     discoveryRatio: number,
+                                     jiraBoardID: string | undefined,
+                                     jiraTicketID: string | undefined,
+                                     inProgress: TicketResponse,
+                                     toDo: TicketResponse): Promise<{ lowTicketTarget: number, highTicketTarget: number}> => {
     let ticketTarget = userSuppliedTicketTarget;
 
     if (jiraBoardID !== undefined && jiraTicketID !== undefined) {
@@ -161,7 +166,7 @@ const simulations = async (resolvedTicketCounts: readonly number[], ticketTarget
     return results;
 };
 
-const printPredictions = (lowTicketTarget: number, highTicketTarget: number, simulationResults: readonly number[]) => {
+const printPredictions = (lowTicketTarget: number, highTicketTarget: number, simulationResults: readonly number[]): void => {
     console.log(`Number of sprints required to ship ${lowTicketTarget} to ${highTicketTarget} tickets ` +
       `(and the number of simulations that arrived at that result):`);
 
@@ -195,7 +200,7 @@ const printPredictions = (lowTicketTarget: number, highTicketTarget: number, sim
       `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${resultAboveThreshold} sprints (${Number(resultAboveThreshold) * sprintLengthInWeeks} weeks) to complete.`);
 };
 
-const main = async () => {
+const main = async (): Promise<void> => {
     if (jiraUsername === undefined || jiraPassword === undefined || jiraProjectID === undefined || jiraBoardID === undefined) {
         console.log("Usage: JIRA_PROJECT_ID=ADE JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start");
         return;

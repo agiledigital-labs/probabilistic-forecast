@@ -14,7 +14,7 @@
     "type-coverage": "type-coverage"
   },
   "typeCoverage": {
-    "atLeast": 97.68,
+    "atLeast": 97.82,
     "strict": true,
     "detail": true
   },
