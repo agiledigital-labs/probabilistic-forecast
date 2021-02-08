@@ -67,7 +67,7 @@ We are 89% confident all 27 to 61 tickets will take no more than 11 sprints (22 
    - Default: 60
  - `BUG_RATIO`
    - Override the rate of bugs being discovered.
-   - Will expect 1 bug ticket to be created for every `$BUG_RATIO` stories.
+   - Will expect 1 bug ticket to be created for every `$BUG_RATIO` stories created.
    - Optional
  - `DISCOVERY_RATIO`
    - Override the rate of new story tickets being created.
@@ -86,6 +86,8 @@ npm ci
 ```
 JIRA_PROJECT_ID=ABC JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
+
+See `example-run.sh` to run interactively.
 
 ## Debug
 
