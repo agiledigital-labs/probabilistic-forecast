@@ -196,6 +196,18 @@ const calculateTicketTarget = async (
   };
 };
 
+/**
+ * Run Monte Carlo simulations to predict the number of time intervals it will take to complete
+ * `ticketTarget` tickets.
+ *
+ * @param resolvedTicketCounts Each element is the number of tickets that were resolved in a
+ *        particular week.
+ * @param ticketTarget The number of tickets in the backlog (and in progress) ahead of the target
+ *        ticket, plus one for the target ticket itself.
+ * @return A Promise that resolves to an array of length `numSimulations` with one element for each
+ *         simulation run. Each element is the number of time intervals it took to complete `ticketTarget`
+ *         tickets in that simulation.
+ */
 const simulations = async (
   resolvedTicketCounts: readonly number[],
   ticketTarget: number
@@ -238,32 +250,42 @@ const printPredictions = (
   let prevCumulativePercentage = 0;
   let resultAboveThreshold: string | undefined = undefined;
 
-  const uniqueResults: Record<string, number> = {};
+  // Count the number of simulations that arrived at each unique result. For example, if 3 of the
+  // simulations predicted 17 time intervals until the target ticket will be completed, 5 simulations
+  // predicted 18 time intervals and 2 predicted 19 time intervals, then we'd end up with
+  // numSimulationsPredicting[17] = 3
+  // numSimulationsPredicting[18] = 5
+  // numSimulationsPredicting[19] = 2
+  const numSimulationsPredicting: Record<string, number> = {};
   for (const result of simulationResults) {
-    uniqueResults[result] = (uniqueResults[result] ?? 0) + 1;
+    numSimulationsPredicting[result] =
+      (numSimulationsPredicting[result] ?? 0) + 1;
   }
 
-  const keys = Object.keys(uniqueResults);
+  const uniquePredictions = Object.keys(numSimulationsPredicting);
 
-  for (const uniqueResult of keys) {
-    percentages[uniqueResult] =
-      ((uniqueResults[uniqueResult] ?? 0) / numSimulations) * 100;
-    cumulativePercentages[uniqueResult] =
-      (percentages[uniqueResult] ?? 0) + prevCumulativePercentage;
-    prevCumulativePercentage = cumulativePercentages[uniqueResult] ?? 0;
+  for (const numSprintsPredicted of uniquePredictions) {
+    percentages[numSprintsPredicted] =
+      ((numSimulationsPredicting[numSprintsPredicted] ?? 0) / numSimulations) *
+      100;
+    cumulativePercentages[numSprintsPredicted] =
+      (percentages[numSprintsPredicted] ?? 0) + prevCumulativePercentage;
+    prevCumulativePercentage = cumulativePercentages[numSprintsPredicted] ?? 0;
 
     if (
       !resultAboveThreshold &&
-      (cumulativePercentages[uniqueResult] ?? 0) >=
+      (cumulativePercentages[numSprintsPredicted] ?? 0) >=
         confidencePercentageThreshold
     ) {
-      resultAboveThreshold = uniqueResult;
+      resultAboveThreshold = numSprintsPredicted;
     }
 
     console.log(
-      `${Number(uniqueResult) * durationInWeeks} weeks, ` +
-        `${Math.floor(cumulativePercentages[uniqueResult] ?? 0)}% confidence ` +
-        `(${uniqueResults[uniqueResult]} simulations)`
+      `${Number(numSprintsPredicted) * durationInWeeks} weeks, ` +
+        `${Math.floor(
+          cumulativePercentages[numSprintsPredicted] ?? 0
+        )}% confidence ` +
+        `(${numSimulationsPredicting[numSprintsPredicted]} simulations)`
     );
   }
 
