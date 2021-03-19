@@ -455,7 +455,12 @@ const main = async () => {
   //   );
   // });
 
-  console.log(`1 bug ticket created for every ${bugRatio} non-bug tickets.`);
+  if (isFinite(bugRatio)) {
+    console.log(`1 bug ticket created for every ${bugRatio} non-bug tickets.`);
+  } else {
+    console.log('No bug tickets created.');
+  }
+
   console.log(
     `1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`
   );
