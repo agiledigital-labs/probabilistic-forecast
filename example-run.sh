@@ -52,6 +52,18 @@ if [[ -z "$DISCOVERY_RATIO" ]]; then
   export DISCOVERY_RATIO
 fi
 
+if [[ -z "$TIME_LENGTH" ]]; then
+  echo "The amount of time the project interval should be counted for (there will be a separate prompt for unit): "
+  read -r TIME_LENGTH
+  export TIME_LENGTH
+fi
+
+if [[ -z "$TIME_UNIT" ]]; then
+  echo "The unit for the time interval: "\
+  read -r TIME_UNIT
+  export TIME_UNIT
+fi
+
 # Output the command.
 set -x
 
@@ -65,4 +77,6 @@ JIRA_USERNAME="$JIRA_USERNAME" \
   JIRA_TICKET_ID="$JIRA_TICKET_ID" \
   BUG_RATIO="$BUG_RATIO" \
   DISCOVERY_RATIO="$DISCOVERY_RATIO" \
+  TIME_LENGTH="$TIME_LENGTH" \
+  TIME_UNIT="$TIME_UNIT" \
   npm run start
