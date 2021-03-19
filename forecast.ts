@@ -324,36 +324,38 @@ const printPredictions = (
   // elements removed.
   const uniquePredictions = Object.keys(numSimulationsPredicting);
 
-  // For each result (number of sprints) predicted by at least one of the simulations
-  for (const numSprintsPredicted of uniquePredictions) {
-    percentages[numSprintsPredicted] =
-      ((numSimulationsPredicting[numSprintsPredicted] ?? 0) / numSimulations) *
+  // For each result (number of time intervals) predicted by at least one of the simulations
+  for (const numIntervalsPredicted of uniquePredictions) {
+    percentages[numIntervalsPredicted] =
+      ((numSimulationsPredicting[numIntervalsPredicted] ?? 0) /
+        numSimulations) *
       100;
-    // And the percentage of simulations that predicted this number of sprints or fewer.
-    cumulativePercentages[numSprintsPredicted] =
-      (percentages[numSprintsPredicted] ?? 0) + prevCumulativePercentage;
-    prevCumulativePercentage = cumulativePercentages[numSprintsPredicted] ?? 0;
+    // And the percentage of simulations that predicted this number of time intervals or fewer.
+    cumulativePercentages[numIntervalsPredicted] =
+      (percentages[numIntervalsPredicted] ?? 0) + prevCumulativePercentage;
+    prevCumulativePercentage =
+      cumulativePercentages[numIntervalsPredicted] ?? 0;
 
     // Remember the lowest number of time interval that was predicted frequently enough
     // to pass the confidence threshold.
     if (
       !resultAboveThreshold &&
-      (cumulativePercentages[numSprintsPredicted] ?? 0) >=
+      (cumulativePercentages[numIntervalsPredicted] ?? 0) >=
         confidencePercentageThreshold
     ) {
-      resultAboveThreshold = numSprintsPredicted;
+      resultAboveThreshold = numIntervalsPredicted;
     }
 
     // Print the confidence (i.e. likelihood) we give for completing the tickets in this amount
     // of time.
     console.log(
-      `${Number(numSprintsPredicted) * durationInDays} days, ` +
+      `${Number(numIntervalsPredicted) * durationInDays} days, ` +
         `${Math.floor(
-          cumulativePercentages[numSprintsPredicted] ?? 0
+          cumulativePercentages[numIntervalsPredicted] ?? 0
         )}% confidence ` +
-        `(${numSimulationsPredicting[numSprintsPredicted]} simulations)` +
+        `(${numSimulationsPredicting[numIntervalsPredicted]} simulations)` +
         // Pluralize
-        `${numSimulationsPredicting[numSprintsPredicted] === 1 ? "" : "s"})`
+        `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`
     );
   }
 
@@ -420,13 +422,15 @@ const main = async () => {
   const resolvedTicketCounts = await fetchResolvedTicketsPerTimeInterval();
 
   await Promise.all(
-    resolvedTicketCounts.map(async (ticketsInSprint, idx) => {
+    resolvedTicketCounts.map(async (ticketsInTimeInterval, idx) => {
       console.log(
-        `Resolved ${ticketsInSprint.total} tickets in sprint ${idx + 1}:`
+        `Resolved ${ticketsInTimeInterval.total} tickets in project interval ${
+          idx + 1
+        }:`
       );
       // Print the ticket IDs. This is useful if you're running simulations regularly and saving
       // the results.
-      console.log(ticketsInSprint.issues.join(", "));
+      console.log(ticketsInTimeInterval.issues.join(", "));
     })
   );
 
