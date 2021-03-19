@@ -395,6 +395,21 @@ const main = async () => {
 
   // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress.
   // Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
+  const board = await jira.getBoard(jiraBoardID);
+
+  if (board.type === "scrum") {
+    // TODO `getIssuesForBoard` doesn't appear to return tickets in a useful backlog order for scrum boards, so we have to do some work to support scrum boards.
+    // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/7
+    throw new Error("Scrum boards are not (yet) supported.");
+  }
+
+  if (board.type !== "kanban") {
+    throw new Error(
+      `Unknown board type [${board.type}] for board [${jiraBoardID}].`
+    );
+  }
+
+  // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
   // TODO: Include tickets in Resolved in the inProgress count, since they still need to be QA'd.
   console.log(`Counting tickets ahead of ${jiraTicketID} in your backlog...`);
   const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
