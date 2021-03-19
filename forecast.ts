@@ -94,7 +94,14 @@ const fetchResolvedTicketsPerTimeInterval = async () => {
   return Promise.all(ticketCounts);
 };
 
-// "1 bug every X stories", which is probably the reciprocal of what you were expecting.
+/**
+ * Gets the bug ratio for "1 bug every X stories" statement.
+ *
+ * @param _jiraTicketID The JIRA ticket for forecast.
+ * @param _inProgress The in-progress tickets.
+ * @param _toDo The tickets that are still waiting to be worked on.
+ * @returns Number of bugs per stories count.
+ */
 const fetchBugRatio = async (
   _jiraTicketID: string | undefined,
   _inProgress: TicketResponse,
@@ -114,7 +121,14 @@ const fetchBugRatio = async (
   return otherTicketCount / bugCount;
 };
 
-// "1 new story [created] every X stories [resolved]"
+/**
+ * Gets the new story ratio for "1 new story [created] every X stories [resolved]" statement.
+ *
+ * @param _jiraTicketID The JIRA ticket for forecast.
+ * @param _inProgress The in-progress tickets.
+ * @param _toDo The tickets that are still waiting to be worked on.
+ * @returns Number of new stories created per resolved stories count.
+ */
 const fetchDiscoveryRatio = async (
   _jiraTicketID: string | undefined,
   _inProgress: TicketResponse,
@@ -138,6 +152,12 @@ const fetchDiscoveryRatio = async (
   return ticketsResolvedCount / nonBugTicketsCreatedCount;
 };
 
+/**
+ * Parses to issue list and total number.
+ *
+ * @param response The query response from JIRA API.
+ * @returns An object consisting of issues and total count.
+ */
 const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
   // TODO parse the response using io-ts.
   return {
@@ -147,7 +167,12 @@ const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
 };
 
 /**
- * Returns all tickets (issue keys) for the specified board in the specified status. Handles pagination with the Jira API and returns everything.
+ * Returns all tickets (issue keys) for the specified board in the specified status.
+ * Handles pagination with the Jira API and returns everything.
+ *
+ * @param jiraBoardID The id of the Kanban board.
+ * @param statusCategory The status based on which issues will be picked.
+ * @returns An object consisting of issues and total count.
  */
 const issuesForBoard = async (
   jiraBoardID: string,
@@ -169,7 +194,15 @@ const issuesForBoard = async (
 };
 
 /**
- * @return The expected number of tickets left to complete, as a range.
+ * Estimates the number of tickets to complete before getting to the supplied ticket.
+ *
+ * @param bugRatio Number of bugs per ticket.
+ * @param discoveryRatio Number of new tickets per resolved ticket.
+ * @param jiraBoardID ID of the Kanban board.
+ * @param jiraTicketID ID of the JIRA ticket to forecast.
+ * @param inProgress Current in-progress tickets.
+ * @param toDo Current to-do tickets.
+ * @returns The expected number of tickets left to complete, as a range.
  */
 const calculateTicketTarget = async (
   bugRatio: number,
@@ -249,6 +282,13 @@ const simulations = async (
   return results;
 };
 
+/**
+ * Prints the predictions realized in relation to the supplied ticket.
+ *
+ * @param lowTicketTarget Minimum number of tickets to complete.
+ * @param highTicketTarget Maximum number of tickets to complete.
+ * @param simulationResults Simulation outcomes.
+ */
 const printPredictions = (
   lowTicketTarget: number,
   highTicketTarget: number,
