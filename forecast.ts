@@ -332,7 +332,7 @@ const main = async () => {
     !(timeUnit === "weeks" || timeUnit === "days" || timeUnit === undefined)
   ) {
     console.log(
-      "Only weeks and months are supported for project interval time units"
+      "Only weeks and days are supported for project interval time units"
     );
     return;
   }
