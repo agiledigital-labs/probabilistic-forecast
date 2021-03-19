@@ -59,7 +59,7 @@ if [[ -z "$TIME_LENGTH" ]]; then
 fi
 
 if [[ -z "$TIME_UNIT" ]]; then
-  echo "The unit for the time interval: "\
+  echo "The unit for the time interval ('weeks' or 'days', default is weeks): "\
   read -r TIME_UNIT
   export TIME_UNIT
 fi
