@@ -353,7 +353,7 @@ const printPredictions = (
         `${Math.floor(
           cumulativePercentages[numIntervalsPredicted] ?? 0
         )}% confidence ` +
-        `(${numSimulationsPredicting[numIntervalsPredicted]} simulations)` +
+        `(${numSimulationsPredicting[numIntervalsPredicted]} simulation` +
         // Pluralize
         `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`
     );
