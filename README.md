@@ -57,9 +57,6 @@ We are 89% confident all 27 to 61 tickets will take no more than 154 days to com
 - `NUM_SIMULATIONS`
   - The number of rounds of Monte Carlo simulation to perform.
   - Default: 1000
-- `SPRINT_LENGTH_IN_WEEKS`
-  - The number of weeks in a sprint for the project.
-  - Default: 2
 - `TICKET_TARGET`
   - Will predict how long the team will take to complete this many tickets _from the current
     in-progress tickets_. This number will be adjusted to account for the rate of new tickets
