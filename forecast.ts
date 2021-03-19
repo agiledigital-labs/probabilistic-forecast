@@ -393,8 +393,6 @@ const main = async () => {
     return;
   }
 
-  // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress.
-  // Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
   const board = await jira.getBoard(jiraBoardID);
 
   if (board.type === "scrum") {
