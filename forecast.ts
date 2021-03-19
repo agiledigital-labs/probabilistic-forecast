@@ -78,14 +78,14 @@ const fetchResolvedTicketsPerTimeInterval = async () => {
   // our time interval is just any period of two weeks.
   let historyStart = -durationInDays;
   let historyEnd = 0;
-  const ticketCounts: Promise<number>[] = [];
+  const ticketCounts: Promise<TicketResponse>[] = [];
 
   while (historyStart >= -1 * numDaysOfHistory) {
     const query =
       `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
       `AND resolved >= ${historyStart}d AND resolved <= ${historyEnd}d`;
 
-    ticketCounts.push(issuesForSearchQuery(query, 0).then((r) => r.total));
+    ticketCounts.push(issuesForSearchQuery(query));
 
     historyStart -= durationInDays;
     historyEnd -= durationInDays;
@@ -237,6 +237,10 @@ const calculateTicketTarget = async (
   return {
     lowTicketTarget: ticketTarget,
     // Adjust to account for the new tickets we expect to be created during future development.
+    // TODO: Should we use a compounding formula to account for tickets that get created and
+    //       then cause new tickets themselves, e.g. bugs introduced by the new features? If so,
+    //       should we treat the two ratios differently, since more bugs tend to be created by
+    //       feature tickets and bugs usually don't take as long as features?
     highTicketTarget: Math.round(
       ticketTarget + ticketTarget / bugRatio + ticketTarget / discoveryRatio
     ),
@@ -316,16 +320,22 @@ const printPredictions = (
       (numSimulationsPredicting[result] ?? 0) + 1;
   }
 
+  // This will give us the same array that nub(simulationResults) would, i.e. all duplicate
+  // elements removed.
   const uniquePredictions = Object.keys(numSimulationsPredicting);
 
+  // For each result (number of sprints) predicted by at least one of the simulations
   for (const numSprintsPredicted of uniquePredictions) {
     percentages[numSprintsPredicted] =
       ((numSimulationsPredicting[numSprintsPredicted] ?? 0) / numSimulations) *
       100;
+    // And the percentage of simulations that predicted this number of sprints or fewer.
     cumulativePercentages[numSprintsPredicted] =
       (percentages[numSprintsPredicted] ?? 0) + prevCumulativePercentage;
     prevCumulativePercentage = cumulativePercentages[numSprintsPredicted] ?? 0;
 
+    // Remember the lowest number of time interval that was predicted frequently enough
+    // to pass the confidence threshold.
     if (
       !resultAboveThreshold &&
       (cumulativePercentages[numSprintsPredicted] ?? 0) >=
@@ -334,12 +344,16 @@ const printPredictions = (
       resultAboveThreshold = numSprintsPredicted;
     }
 
+    // Print the confidence (i.e. likelihood) we give for completing the tickets in this amount
+    // of time.
     console.log(
       `${Number(numSprintsPredicted) * durationInDays} days, ` +
         `${Math.floor(
           cumulativePercentages[numSprintsPredicted] ?? 0
         )}% confidence ` +
-        `(${numSimulationsPredicting[numSprintsPredicted]} simulations)`
+        `(${numSimulationsPredicting[numSprintsPredicted]} simulations)` +
+        // Pluralize
+        `${numSimulationsPredicting[numSprintsPredicted] === 1 ? "" : "s"})`
     );
   }
 
@@ -362,7 +376,7 @@ const main = async () => {
     jiraProjectID === undefined ||
     jiraBoardID === undefined
   ) {
-    console.log(
+    console.error(
       "Usage: JIRA_PROJECT_ID=ADE JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start"
     );
     return;
@@ -371,14 +385,16 @@ const main = async () => {
   if (
     !(timeUnit === "weeks" || timeUnit === "days" || timeUnit === undefined)
   ) {
-    console.log(
+    console.error(
       "Only weeks and days are supported for project interval time units"
     );
     return;
   }
 
-  // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
+  // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress.
+  // Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
   // TODO: Include tickets in Resolved in the inProgress count, since they still need to be QA'd.
+  console.log(`Counting tickets ahead of ${jiraTicketID} in your backlog...`);
   const inProgress = await issuesForBoard(jiraBoardID, "In Progress");
   const toDo = await issuesForBoard(jiraBoardID, "To Do");
   const bugRatio =
@@ -403,13 +419,24 @@ const main = async () => {
   );
   const resolvedTicketCounts = await fetchResolvedTicketsPerTimeInterval();
 
-  resolvedTicketCounts.forEach(async (ticketCount, idx) => {
-    // TODO: Not sure these will be in order. I don't think it matters to the simulation, so I
-    //       didn't bother checking.
-    console.log(
-      `Resolved ${ticketCount} tickets in project interval ${idx + 1}.`
-    );
-  });
+  await Promise.all(
+    resolvedTicketCounts.map(async (ticketsInSprint, idx) => {
+      console.log(
+        `Resolved ${ticketsInSprint.total} tickets in sprint ${idx + 1}:`
+      );
+      // Print the ticket IDs. This is useful if you're running simulations regularly and saving
+      // the results.
+      console.log(ticketsInSprint.issues.join(", "));
+    })
+  );
+
+  // resolvedTicketCounts.forEach(async (ticketCount, idx) => {
+  //   // TODO: Not sure these will be in order. I don't think it matters to the simulation, so I
+  //   //       didn't bother checking.
+  //   console.log(
+  //     `Resolved ${ticketCount} tickets in project interval ${idx + 1}.`
+  //   );
+  // });
 
   console.log(`1 bug ticket created for every ${bugRatio} non-bug tickets.`);
   console.log(
@@ -422,7 +449,7 @@ const main = async () => {
 
   console.log(`Running ${numSimulations} simulations...`);
   const simulationResults = await simulations(
-    resolvedTicketCounts,
+    resolvedTicketCounts.map((tickets) => tickets.total),
     highTicketTarget
   );
 
