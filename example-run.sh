@@ -39,14 +39,14 @@ fi
 
 # Ask for the ticket creation rates.
 if [[ -z "$BUG_RATIO" ]]; then
-  echo "Override bug discovery ratio? Leave blank to calculate it automatically or e.g. 5 if you "\
+  echo "Override bug discovery ratio? Leave blank to calculate it automatically or e.g. 5 if you"\
     "expect to create 1 bug ticket for every 5 stories resolved:"
   read -r BUG_RATIO
   export BUG_RATIO
 fi
 
 if [[ -z "$DISCOVERY_RATIO" ]]; then
-  echo "Override new story ratio? Leave blank to calculate it automatically or e.g. 10 if you "\
+  echo "Override new story ratio? Leave blank to calculate it automatically or e.g. 10 if you"\
     "expect to create 1 story ticket for every 10 stories resolved:"
   read -r DISCOVERY_RATIO
   export DISCOVERY_RATIO
