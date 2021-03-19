@@ -1,5 +1,6 @@
 import JiraApi from "jira-client";
 
+const daysInWeek = 7;
 const jiraHost = process.env.JIRA_HOST ?? "jira.agiledigital.com.au";
 const jiraPort = process.env.JIRA_PORT;
 const jiraProtocol = process.env.JIRA_PROTOCOL ?? "https";
@@ -8,16 +9,19 @@ const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
 const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
-const numWeeksOfHistory = Number.parseInt(
-  process.env.NUM_WEEKS_OF_HISTORY ?? "10"
-);
+// the number of days JIRA goes back to collect data for simulation
+const numDaysOfHistory =
+  Number.parseInt(process.env.NUM_WEEKS_OF_HISTORY ?? "10") * daysInWeek;
+
 const confidencePercentageThreshold = Number.parseInt(
   process.env.CONFIDENCE_PERCENTAGE_THRESHOLD ?? "80"
 );
 const numSimulations = Number.parseInt(process.env.NUM_SIMULATIONS ?? "1000");
-const sprintLengthInWeeks = Number.parseInt(
-  process.env.SPRINT_LENGTH_IN_WEEKS ?? "2"
-);
+// length and units are in separate variables
+const timeLength = Number.parseInt(process.env.TIME_LENGTH ?? "2");
+// this can be weeks or days
+const timeUnit = process.env.TIME_UNIT ?? "weeks";
+
 const userSuppliedTicketTarget = Number.parseInt(
   process.env.TICKET_TARGET ?? "60"
 );
@@ -43,6 +47,17 @@ type TicketResponse = {
   readonly issues: ReadonlyArray<string>;
 };
 
+// convert provided time interval into days
+const durationInDays =
+  timeUnit === "days" ? timeLength : timeLength * daysInWeek;
+
+/**
+ * Collects issues from JIRA to analyse and facilitate prediction.
+ *
+ * @param searchQuery Query to retrieve data from JIRA.
+ * @param maxResults Maximum number of results to retrieve.
+ * @returns The tickets retrieved from JIRA.
+ */
 const issuesForSearchQuery = async (
   searchQuery: string,
   maxResults: number = 1000
@@ -53,64 +68,83 @@ const issuesForSearchQuery = async (
 
 // TODO: It would be better to use the date QA was completed for the ticket instead of the date the
 //       ticket was resolved.
-const fetchResolvedTicketsPerSprint = async (): Promise<TicketResponse[]> => {
-  // We want to know how many tickets were completed during each sprint. To make things easier,
-  // we're defining a sprint as just any period of sprintLengthInWeeks weeks.
-  let historyStart = -sprintLengthInWeeks;
+/**
+ * Gets tickets resolved in each time interval cycle.
+ *
+ * @returns An array of number of tickets resolved in each time interval.
+ */
+const fetchResolvedTicketsPerTimeInterval = async () => {
+  // We want to know how many tickets were completed during each time interval. If not defined,
+  // our time interval is just any period of two weeks.
+  let historyStart = -durationInDays;
   let historyEnd = 0;
-  const tickets: Promise<TicketResponse>[] = [];
+  const ticketCounts: Promise<TicketResponse>[] = [];
 
-  while (historyStart >= -1 * numWeeksOfHistory) {
+  while (historyStart >= -1 * numDaysOfHistory) {
     const query =
       `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
-      `AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
+      `AND resolved >= ${historyStart}d AND resolved <= ${historyEnd}d`;
 
-    tickets.push(issuesForSearchQuery(query));
+    ticketCounts.push(issuesForSearchQuery(query));
 
-    historyStart -= sprintLengthInWeeks;
-    historyEnd -= sprintLengthInWeeks;
+    historyStart -= durationInDays;
+    historyEnd -= durationInDays;
   }
 
-  return Promise.all(tickets);
+  return Promise.all(ticketCounts);
 };
 
-// "1 bug every X stories", which is probably the reciprocal of what you were expecting.
+/**
+ * Gets the bug ratio for "1 bug every X stories" statement.
+ *
+ * @param _jiraTicketID The JIRA ticket for forecast.
+ * @param _inProgress The in-progress tickets.
+ * @param _toDo The tickets that are still waiting to be worked on.
+ * @returns Number of bugs per stories count.
+ */
 const fetchBugRatio = async (
   _jiraTicketID: string | undefined,
   _inProgress: TicketResponse,
   _toDo: TicketResponse
-): Promise<number> => {
+) => {
   // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
-  const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+  const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
   const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
 
   // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
   const otherTicketsQuery =
     `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
-    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
+    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
   const otherTicketCount = (await issuesForSearchQuery(otherTicketsQuery, 0))
     .total;
 
   return otherTicketCount / bugCount;
 };
 
-// "1 new story [created] every X stories [resolved]"
+/**
+ * Gets the new story ratio for "1 new story [created] every X stories [resolved]" statement.
+ *
+ * @param _jiraTicketID The JIRA ticket for forecast.
+ * @param _inProgress The in-progress tickets.
+ * @param _toDo The tickets that are still waiting to be worked on.
+ * @returns Number of new stories created per resolved stories count.
+ */
 const fetchDiscoveryRatio = async (
   _jiraTicketID: string | undefined,
   _inProgress: TicketResponse,
   _toDo: TicketResponse
-): Promise<number> => {
+) => {
   // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
   const nonBugTicketsCreatedQuery =
     `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
-    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
+    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
   const nonBugTicketsCreatedCount = (
     await issuesForSearchQuery(nonBugTicketsCreatedQuery, 0)
   ).total;
 
   const ticketsResolvedQuery =
     `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
-    `AND issuetype != Epic AND resolved >= -${numWeeksOfHistory}w`;
+    `AND issuetype != Epic AND resolved >= -${numDaysOfHistory}d`;
   const ticketsResolvedCount = (
     await issuesForSearchQuery(ticketsResolvedQuery, 0)
   ).total;
@@ -118,6 +152,12 @@ const fetchDiscoveryRatio = async (
   return ticketsResolvedCount / nonBugTicketsCreatedCount;
 };
 
+/**
+ * Parses to issue list and total number.
+ *
+ * @param response The query response from JIRA API.
+ * @returns An object consisting of issues and total count.
+ */
 const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
   // TODO parse the response using io-ts.
   return {
@@ -127,7 +167,12 @@ const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
 };
 
 /**
- * Returns all tickets (issue keys) for the specified board in the specified status. Handles pagination with the Jira API and returns everything.
+ * Returns all tickets (issue keys) for the specified board in the specified status.
+ * Handles pagination with the Jira API and returns everything.
+ *
+ * @param jiraBoardID The id of the Kanban board.
+ * @param statusCategory The status based on which issues will be picked.
+ * @returns An object consisting of issues and total count.
  */
 const issuesForBoard = async (
   jiraBoardID: string,
@@ -149,7 +194,15 @@ const issuesForBoard = async (
 };
 
 /**
- * @return The expected number of tickets left to complete, as a range.
+ * Estimates the number of tickets to complete before getting to the supplied ticket.
+ *
+ * @param bugRatio Number of bugs per ticket.
+ * @param discoveryRatio Number of new tickets per resolved ticket.
+ * @param jiraBoardID ID of the Kanban board.
+ * @param jiraTicketID ID of the JIRA ticket to forecast.
+ * @param inProgress Current in-progress tickets.
+ * @param toDo Current to-do tickets.
+ * @returns The expected number of tickets left to complete, as a range.
  */
 const calculateTicketTarget = async (
   bugRatio: number,
@@ -195,7 +248,7 @@ const calculateTicketTarget = async (
 };
 
 /**
- * Run Monte Carlo simulations to predict the number of sprints it will take to complete
+ * Run Monte Carlo simulations to predict the number of time intervals it will take to complete
  * `ticketTarget` tickets.
  *
  * @param resolvedTicketCounts Each element is the number of tickets that were resolved in a
@@ -203,7 +256,7 @@ const calculateTicketTarget = async (
  * @param ticketTarget The number of tickets in the backlog (and in progress) ahead of the target
  *        ticket, plus one for the target ticket itself.
  * @return A Promise that resolves to an array of length `numSimulations` with one element for each
- *         simulation run. Each element is the number of sprints it took to complete `ticketTarget`
+ *         simulation run. Each element is the number of time intervals it took to complete `ticketTarget`
  *         tickets in that simulation.
  */
 const simulations = async (
@@ -213,7 +266,7 @@ const simulations = async (
   const results: number[] = Array(numSimulations).fill(0);
 
   if (resolvedTicketCounts.every((x) => x === 0)) {
-    // If every single one of our past sprints completed zero tickets, the loop below will never terminate.
+    // If every single one of our past time intervals completed zero tickets, the loop below will never terminate.
     // So let's say all our "simulations" conclude that we will ship zero tickets this time too.
     return results;
   }
@@ -222,9 +275,9 @@ const simulations = async (
   for (let i = 0; i < numSimulations; i++) {
     let storiesDone = 0;
     while (storiesDone <= ticketTarget) {
-      const numSprints = resolvedTicketCounts.length;
+      const numTimeIntervals = resolvedTicketCounts.length;
       storiesDone += resolvedTicketCounts[
-        Math.floor(Math.random() * numSprints)
+        Math.floor(Math.random() * numTimeIntervals)
       ]!;
       results[i]++;
     }
@@ -233,13 +286,21 @@ const simulations = async (
   return results;
 };
 
+/**
+ * Prints the predictions realized in relation to the supplied ticket.
+ *
+ * @param lowTicketTarget Minimum number of tickets to complete.
+ * @param highTicketTarget Maximum number of tickets to complete.
+ * @param simulationResults Simulation outcomes.
+ */
 const printPredictions = (
   lowTicketTarget: number,
   highTicketTarget: number,
   simulationResults: readonly number[]
-): void => {
+) => {
   console.log(
-    `Number of sprints required to ship ${lowTicketTarget} to ${highTicketTarget} tickets:`
+    `Amount of time required to ship ${lowTicketTarget} to ${highTicketTarget} tickets ` +
+      `(and the number of simulations that arrived at that result):`
   );
 
   const percentages: Record<string, number> = {};
@@ -248,71 +309,69 @@ const printPredictions = (
   let resultAboveThreshold: string | undefined = undefined;
 
   // Count the number of simulations that arrived at each unique result. For example, if 3 of the
-  // simulations predicted 17 sprints until the target ticket will be completed, 5 simulations
-  // predicted 18 sprints and 2 predicted 19 sprints, then we'd end up with
+  // simulations predicted 17 time intervals until the target ticket will be completed, 5 simulations
+  // predicted 18 time intervals and 2 predicted 19 time intervals, then we'd end up with
   // numSimulationsPredicting[17] = 3
   // numSimulationsPredicting[18] = 5
   // numSimulationsPredicting[19] = 2
   const numSimulationsPredicting: Record<string, number> = {};
-  for (const numSprintsPredicted of simulationResults) {
-    numSimulationsPredicting[numSprintsPredicted] =
-      (numSimulationsPredicting[numSprintsPredicted] ?? 0) + 1;
+  for (const result of simulationResults) {
+    numSimulationsPredicting[result] =
+      (numSimulationsPredicting[result] ?? 0) + 1;
   }
 
   // This will give us the same array that nub(simulationResults) would, i.e. all duplicate
   // elements removed.
   const uniquePredictions = Object.keys(numSimulationsPredicting);
 
-  // For each result (number of sprints) predicted by at least one of the simulations
-  for (const numSprintsPredicted of uniquePredictions) {
-    // Calculate the percentage of simulations that predicted this number of sprints.
-    percentages[numSprintsPredicted] =
-      ((numSimulationsPredicting[numSprintsPredicted] ?? 0) / numSimulations) *
+  // For each result (number of time intervals) predicted by at least one of the simulations
+  for (const numIntervalsPredicted of uniquePredictions) {
+    percentages[numIntervalsPredicted] =
+      ((numSimulationsPredicting[numIntervalsPredicted] ?? 0) /
+        numSimulations) *
       100;
-    // And the percentage of simulations that predicted this number of sprints or fewer.
-    cumulativePercentages[numSprintsPredicted] =
-      (percentages[numSprintsPredicted] ?? 0) + prevCumulativePercentage;
-    prevCumulativePercentage = cumulativePercentages[numSprintsPredicted] ?? 0;
+    // And the percentage of simulations that predicted this number of time intervals or fewer.
+    cumulativePercentages[numIntervalsPredicted] =
+      (percentages[numIntervalsPredicted] ?? 0) + prevCumulativePercentage;
+    prevCumulativePercentage =
+      cumulativePercentages[numIntervalsPredicted] ?? 0;
 
-    // Remember the lowest number of sprints that was predicted frequently enough to pass the
-    // confidence threshold.
+    // Remember the lowest number of time interval that was predicted frequently enough
+    // to pass the confidence threshold.
     if (
       !resultAboveThreshold &&
-      (cumulativePercentages[numSprintsPredicted] ?? 0) >=
+      (cumulativePercentages[numIntervalsPredicted] ?? 0) >=
         confidencePercentageThreshold
     ) {
-      resultAboveThreshold = numSprintsPredicted;
+      resultAboveThreshold = numIntervalsPredicted;
     }
 
     // Print the confidence (i.e. likelihood) we give for completing the tickets in this amount
     // of time.
     console.log(
-      `${numSprintsPredicted} sprints (${
-        Number(numSprintsPredicted) * sprintLengthInWeeks
-      } weeks), ` +
+      `${Number(numIntervalsPredicted) * durationInDays} days, ` +
         `${Math.floor(
-          cumulativePercentages[numSprintsPredicted] ?? 0
+          cumulativePercentages[numIntervalsPredicted] ?? 0
         )}% confidence ` +
-        `(predicted by ${numSimulationsPredicting[numSprintsPredicted]} simulation` +
-        // Pluralise?
-        `${numSimulationsPredicting[numSprintsPredicted] === 1 ? "" : "s"})`
+        `(${numSimulationsPredicting[numIntervalsPredicted]} simulations)` +
+        // Pluralize
+        `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`
     );
   }
 
-  // Print the lowest prediction that passes the confidence threshold.
   console.log(
     `We are ${
       resultAboveThreshold
         ? Math.floor(cumulativePercentages[resultAboveThreshold] ?? 0)
         : "?"
     }% confident all ` +
-      `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${resultAboveThreshold} sprints (${
-        Number(resultAboveThreshold) * sprintLengthInWeeks
-      } weeks) to complete.`
+      `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${
+        Number(resultAboveThreshold) * durationInDays
+      } days to complete.`
   );
 };
 
-const main = async (): Promise<void> => {
+const main = async () => {
   if (
     jiraUsername === undefined ||
     jiraPassword === undefined ||
@@ -325,16 +384,29 @@ const main = async (): Promise<void> => {
     return;
   }
 
+  if (
+    !(timeUnit === "weeks" || timeUnit === "days" || timeUnit === undefined)
+  ) {
+    console.error(
+      "Only weeks and days are supported for project interval time units"
+    );
+    return;
+  }
+
+  // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress.
+  // Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
   const board = await jira.getBoard(jiraBoardID);
 
   if (board.type === "scrum") {
-      // TODO `getIssuesForBoard` doesn't appear to return tickets in a useful backlog order for scrum boards, so we have to do some work to support scrum boards.
-      // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/7
-      throw new Error("Scrum boards are not (yet) supported.");
+    // TODO `getIssuesForBoard` doesn't appear to return tickets in a useful backlog order for scrum boards, so we have to do some work to support scrum boards.
+    // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/7
+    throw new Error("Scrum boards are not (yet) supported.");
   }
 
   if (board.type !== "kanban") {
-      throw new Error(`Unknown board type [${board.type}] for board [${jiraBoardID}].`);
+    throw new Error(
+      `Unknown board type [${board.type}] for board [${jiraBoardID}].`
+    );
   }
 
   // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
@@ -356,25 +428,34 @@ const main = async (): Promise<void> => {
     toDo
   );
 
-  // TODO: Remove concept of sprints entirely? We should be able to just use days or weeks. See #2.
-  console.log(`Sprint length is ${sprintLengthInWeeks} weeks`);
+  console.log(`Project interval is ${timeLength} ${timeUnit}`);
   console.log(
     `Fetching ticket counts for the last ${
-      numWeeksOfHistory / sprintLengthInWeeks
-    } sprints in ${jiraProjectID}...`
+      numDaysOfHistory / durationInDays
+    } project intervals in ${jiraProjectID}...`
   );
-  const resolvedTicketsPerSprint = await fetchResolvedTicketsPerSprint();
+  const resolvedTicketCounts = await fetchResolvedTicketsPerTimeInterval();
 
   await Promise.all(
-    resolvedTicketsPerSprint.map(async (ticketsInSprint, idx) => {
+    resolvedTicketCounts.map(async (ticketsInTimeInterval, idx) => {
       console.log(
-        `Resolved ${ticketsInSprint.total} tickets in sprint ${idx + 1}:`
+        `Resolved ${ticketsInTimeInterval.total} tickets in project interval ${
+          idx + 1
+        }:`
       );
       // Print the ticket IDs. This is useful if you're running simulations regularly and saving
       // the results.
-      console.log(ticketsInSprint.issues.join(", "));
+      console.log(ticketsInTimeInterval.issues.join(", "));
     })
   );
+
+  // resolvedTicketCounts.forEach(async (ticketCount, idx) => {
+  //   // TODO: Not sure these will be in order. I don't think it matters to the simulation, so I
+  //   //       didn't bother checking.
+  //   console.log(
+  //     `Resolved ${ticketCount} tickets in project interval ${idx + 1}.`
+  //   );
+  // });
 
   console.log(`1 bug ticket created for every ${bugRatio} non-bug tickets.`);
   console.log(
@@ -387,7 +468,7 @@ const main = async (): Promise<void> => {
 
   console.log(`Running ${numSimulations} simulations...`);
   const simulationResults = await simulations(
-    resolvedTicketsPerSprint.map((tickets) => tickets.total),
+    resolvedTicketCounts.map((tickets) => tickets.total),
     highTicketTarget
   );
 
