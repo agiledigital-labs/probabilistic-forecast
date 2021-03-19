@@ -9,7 +9,7 @@ const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
 const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
-// the number of days JIRA goes back to collect data for simulation
+// the number of days Jira goes back to collect data for simulation
 const numDaysOfHistory =
   Number.parseInt(process.env.NUM_WEEKS_OF_HISTORY ?? "10") * daysInWeek;
 
@@ -52,11 +52,11 @@ const durationInDays =
   timeUnit === "days" ? timeLength : timeLength * daysInWeek;
 
 /**
- * Collects issues from JIRA to analyse and facilitate prediction.
+ * Collects issues from Jira to analyse and facilitate prediction.
  *
- * @param searchQuery Query to retrieve data from JIRA.
+ * @param searchQuery Query to retrieve data from Jira.
  * @param maxResults Maximum number of results to retrieve.
- * @returns The tickets retrieved from JIRA.
+ * @returns The tickets retrieved from Jira.
  */
 const issuesForSearchQuery = async (
   searchQuery: string,
@@ -97,7 +97,7 @@ const fetchResolvedTicketsPerTimeInterval = async () => {
 /**
  * Gets the bug ratio for "1 bug every X stories" statement.
  *
- * @param _jiraTicketID The JIRA ticket for forecast.
+ * @param _jiraTicketID The Jira ticket for forecast.
  * @param _inProgress The in-progress tickets.
  * @param _toDo The tickets that are still waiting to be worked on.
  * @returns Number of bugs per stories count.
@@ -124,7 +124,7 @@ const fetchBugRatio = async (
 /**
  * Gets the new story ratio for "1 new story [created] every X stories [resolved]" statement.
  *
- * @param _jiraTicketID The JIRA ticket for forecast.
+ * @param _jiraTicketID The Jira ticket for forecast.
  * @param _inProgress The in-progress tickets.
  * @param _toDo The tickets that are still waiting to be worked on.
  * @returns Number of new stories created per resolved stories count.
@@ -155,7 +155,7 @@ const fetchDiscoveryRatio = async (
 /**
  * Parses to issue list and total number.
  *
- * @param response The query response from JIRA API.
+ * @param response The query response from Jira API.
  * @returns An object consisting of issues and total count.
  */
 const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
@@ -199,7 +199,7 @@ const issuesForBoard = async (
  * @param bugRatio Number of bugs per ticket.
  * @param discoveryRatio Number of new tickets per resolved ticket.
  * @param jiraBoardID ID of the Kanban board.
- * @param jiraTicketID ID of the JIRA ticket to forecast.
+ * @param jiraTicketID ID of the Jira ticket to forecast.
  * @param inProgress Current in-progress tickets.
  * @param toDo Current to-do tickets.
  * @returns The expected number of tickets left to complete, as a range.
