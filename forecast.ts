@@ -9,10 +9,10 @@ const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
 const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
-// the number of weeks JIRA goes back to collect data for simulation
-const numWeeksOfHistory = Number.parseInt(
-  process.env.NUM_WEEKS_OF_HISTORY ?? "10"
-);
+// the number of days JIRA goes back to collect data for simulation
+const numDaysOfHistory =
+  Number.parseInt(process.env.NUM_WEEKS_OF_HISTORY ?? "10") * daysInWeek;
+
 const confidencePercentageThreshold = Number.parseInt(
   process.env.CONFIDENCE_PERCENTAGE_THRESHOLD ?? "80"
 );
@@ -47,9 +47,9 @@ type TicketResponse = {
   readonly issues: ReadonlyArray<string>;
 };
 
-// convert provided time interval into weeks
-const durationInWeeks =
-  timeUnit === "weeks" ? timeLength : timeLength / daysInWeek;
+// convert provided time interval into days
+const durationInDays =
+  timeUnit === "days" ? timeLength : timeLength * daysInWeek;
 
 /**
  * Collects issues from JIRA to analyse and facilitate prediction.
@@ -76,19 +76,19 @@ const issuesForSearchQuery = async (
 const fetchResolvedTicketsPerTimeInterval = async () => {
   // We want to know how many tickets were completed during each time interval. If not defined,
   // our time interval is just any period of two weeks.
-  let historyStart = -durationInWeeks;
+  let historyStart = -durationInDays;
   let historyEnd = 0;
   const ticketCounts: Promise<number>[] = [];
 
-  while (historyStart >= -1 * numWeeksOfHistory) {
+  while (historyStart >= -1 * numDaysOfHistory) {
     const query =
       `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
-      `AND resolved >= ${historyStart}w AND resolved <= ${historyEnd}w`;
+      `AND resolved >= ${historyStart}d AND resolved <= ${historyEnd}d`;
 
     ticketCounts.push(issuesForSearchQuery(query, 0).then((r) => r.total));
 
-    historyStart -= durationInWeeks;
-    historyEnd -= durationInWeeks;
+    historyStart -= durationInDays;
+    historyEnd -= durationInDays;
   }
 
   return Promise.all(ticketCounts);
@@ -108,13 +108,13 @@ const fetchBugRatio = async (
   _toDo: TicketResponse
 ) => {
   // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
-  const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numWeeksOfHistory}w`;
+  const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
   const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
 
   // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
   const otherTicketsQuery =
     `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
-    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
+    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
   const otherTicketCount = (await issuesForSearchQuery(otherTicketsQuery, 0))
     .total;
 
@@ -137,14 +137,14 @@ const fetchDiscoveryRatio = async (
   // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
   const nonBugTicketsCreatedQuery =
     `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
-    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numWeeksOfHistory}w`;
+    `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
   const nonBugTicketsCreatedCount = (
     await issuesForSearchQuery(nonBugTicketsCreatedQuery, 0)
   ).total;
 
   const ticketsResolvedQuery =
     `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
-    `AND issuetype != Epic AND resolved >= -${numWeeksOfHistory}w`;
+    `AND issuetype != Epic AND resolved >= -${numDaysOfHistory}d`;
   const ticketsResolvedCount = (
     await issuesForSearchQuery(ticketsResolvedQuery, 0)
   ).total;
@@ -335,7 +335,7 @@ const printPredictions = (
     }
 
     console.log(
-      `${Number(numSprintsPredicted) * durationInWeeks} weeks, ` +
+      `${Number(numSprintsPredicted) * durationInDays} days, ` +
         `${Math.floor(
           cumulativePercentages[numSprintsPredicted] ?? 0
         )}% confidence ` +
@@ -350,8 +350,8 @@ const printPredictions = (
         : "?"
     }% confident all ` +
       `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${
-        Number(resultAboveThreshold) * durationInWeeks
-      } weeks to complete.`
+        Number(resultAboveThreshold) * durationInDays
+      } days to complete.`
   );
 };
 
@@ -398,9 +398,7 @@ const main = async () => {
   console.log(`Project interval is ${timeLength} ${timeUnit}`);
   console.log(
     `Fetching ticket counts for the last ${
-      timeUnit === "weeks"
-        ? numWeeksOfHistory / timeLength
-        : numWeeksOfHistory / (timeLength / 7)
+      numDaysOfHistory / durationInDays
     } project intervals in ${jiraProjectID}...`
   );
   const resolvedTicketCounts = await fetchResolvedTicketsPerTimeInterval();
