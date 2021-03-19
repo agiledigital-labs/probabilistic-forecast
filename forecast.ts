@@ -9,6 +9,7 @@ const jiraPassword = process.env.JIRA_PASSWORD;
 const jiraProjectID = process.env.JIRA_PROJECT_ID;
 const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
+// the number of weeks JIRA goes back to collect data for simulation
 const numWeeksOfHistory = Number.parseInt(
   process.env.NUM_WEEKS_OF_HISTORY ?? "10"
 );
@@ -16,7 +17,7 @@ const confidencePercentageThreshold = Number.parseInt(
   process.env.CONFIDENCE_PERCENTAGE_THRESHOLD ?? "80"
 );
 const numSimulations = Number.parseInt(process.env.NUM_SIMULATIONS ?? "1000");
-
+// length and units are in separate variables
 const timeLength = Number.parseInt(process.env.TIME_LENGTH ?? "2");
 // this can be weeks or days
 const timeUnit = process.env.TIME_UNIT ?? "weeks";
@@ -46,9 +47,17 @@ type TicketResponse = {
   readonly issues: ReadonlyArray<string>;
 };
 
+// convert provided time interval into weeks
 const durationInWeeks =
   timeUnit === "weeks" ? timeLength : timeLength / daysInWeek;
 
+/**
+ * Collects issues from JIRA to analyse and facilitate prediction.
+ *
+ * @param searchQuery Query to retrieve data from JIRA.
+ * @param maxResults Maximum number of results to retrieve.
+ * @returns The tickets retrieved from JIRA.
+ */
 const issuesForSearchQuery = async (
   searchQuery: string,
   maxResults: number = 1000
@@ -59,6 +68,11 @@ const issuesForSearchQuery = async (
 
 // TODO: It would be better to use the date QA was completed for the ticket instead of the date the
 //       ticket was resolved.
+/**
+ * Gets tickets resolved in each time interval cycle.
+ *
+ * @returns An array of number of tickets resolved in each time interval.
+ */
 const fetchResolvedTicketsPerTimeInterval = async () => {
   // We want to know how many tickets were completed during each time interval. If not defined,
   // our time interval is just any period of two weeks.
