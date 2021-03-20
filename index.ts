@@ -60,8 +60,7 @@ const main = async () => {
     return;
   }
 
-  console.log(`Counting tickets ahead of ${jiraTicketID} in board ${jiraBoardID}...`);
-
+  console.log(`Connecting to Jira and getting board ${jiraBoardID}.`);
   const jira = await jiraClient(
     process.env.JIRA_HOST ?? "jira.agiledigital.com.au",
     process.env.JIRA_PORT,
@@ -74,6 +73,7 @@ const main = async () => {
   );
 
   // All in progress or to do Jira tickets for the given board (either kanban or scrum).
+  console.log(`Counting tickets ahead of ${jiraTicketID} in board ${jiraBoardID}...`);
   const tickets = await jira.issuesForBoard();
 
   // The Jira project IDs used to measure team performance (velocity, ticket creation rate, etc).
@@ -86,7 +86,7 @@ const main = async () => {
   const bugRatio = bugRatioOverride ?? (await jira.fetchBugRatio(jiraProjectIDs));
   const discoveryRatio =
     discoveryRatioOverride ?? (await jira.fetchDiscoveryRatio(jiraProjectIDs));
-  const { lowTicketTarget, highTicketTarget } = await calculateTicketTarget(
+  const { numberOfTicketsAboveTarget, lowTicketTarget, highTicketTarget } = await calculateTicketTarget(
     bugRatio,
     discoveryRatio,
     jiraBoardID,
@@ -95,10 +95,12 @@ const main = async () => {
     userSuppliedTicketTarget
   );
 
+  console.log(`There are ${tickets.issues.length} tickets in board ${jiraBoardID} that are either in progress or still to do. Of those, ${numberOfTicketsAboveTarget} tickets are ahead of ${jiraTicketID} in priority order.`);
+
   console.log(`Project interval is ${timeLength} ${timeUnit}`);
-  console.log(`The team's past performance will be measured based on ticket in project(s) ${jiraProjectIDs.join(", ")} that have been resolved in the last ${
+  console.log(`The team's past performance will be measured based on tickets in project(s) ${jiraProjectIDs.join(", ")} that have been resolved in the last ${
     numDaysOfHistory / durationInDays
-  } project intervals.`);
+  } project intervals (${numDaysOfHistory} days of history will be considered in total).`);
   const resolvedTicketCounts = await jira.fetchResolvedTicketsPerTimeInterval(jiraProjectIDs);
 
   await Promise.all(

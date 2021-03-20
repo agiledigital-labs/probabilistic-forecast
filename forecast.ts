@@ -18,7 +18,7 @@ export const calculateTicketTarget = async (
   jiraTicketID: string,
   tickets: TicketResponse,
   userSuppliedTicketTarget: number
-): Promise<{ lowTicketTarget: number; highTicketTarget: number }> => {
+): Promise<{ numberOfTicketsAboveTarget: number, lowTicketTarget: number; highTicketTarget: number }> => {
   let ticketTarget = userSuppliedTicketTarget;
 
   const numberOfTicketsAboveTarget = tickets.issues.indexOf(jiraTicketID);
@@ -35,6 +35,7 @@ export const calculateTicketTarget = async (
   // Examples: "when will all tickets in epic x be done?", "when will all tickets with label y be done?"
 
   return {
+    numberOfTicketsAboveTarget: numberOfTicketsAboveTarget,
     lowTicketTarget: ticketTarget,
     // Adjust to account for the new tickets we expect to be created during future development.
     // TODO: Should we use a compounding formula to account for tickets that get created and
