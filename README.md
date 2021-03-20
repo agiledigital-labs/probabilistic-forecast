@@ -14,35 +14,46 @@ Jira plugin for probabilistic forecasting. (Currently just a command line script
 Let's say you have a ticket ADE-166 some way down your backlog. Let's say that ticket is in project ADE and the ID of the Jira board (kanban) is 74. ADE-166 represents the completion of a feature that you're interested in. You want to know when that feature will be ready. Here's what you do:
 
 ```
-$ JIRA_PROJECT_ID="ADE" \
-> JIRA_TICKET_ID="ADE-166" \
+$ JIRA_TICKET_ID="ADE-166" \
 > JIRA_BOARD_ID="74" \
 > JIRA_USERNAME=${JIRA_USERNAME} \
 > JIRA_PASSWORD=${JIRA_PASSWORD} \
 > npm run start
-Counting tickets ahead of ADE-166 in your backlog...
-27 total tickets ahead of ADE-166 (21 in progress + 6 to do)
+Connecting to Jira and getting board 74.
+Counting tickets ahead of ADE-166 in board 74...
+There are 86 tickets in board 74 that are either in progress or still to do. Of those, 30 tickets are ahead of ADE-166 in priority order.
 Project interval is 2 weeks
-Fetching ticket counts for the last 5 project intervals in ADE...
-Resolved 5 tickets in project interval 1:
-Ticket names...
-Resolved 4 tickets in project interval 2:
-Ticket names....
-....................
-1 bug ticket created for every 70 non-bug tickets.
-1 new non-bug ticket created for every 0.8142857142857143 tickets resolved.
-If the team continues to create new tickets at this rate, we predict the 27 outstanding tickets will have grown to 61 tickets by the time they have all been completed.
+The team's past performance will be measured based on tickets in project(s) ADE that have been resolved in the last 5 project intervals (70 days of history will be considered in total).
+Resolved 2 tickets in project interval 1:
+<snip>
+Resolved 2 tickets in project interval 2:
+<snip>
+Resolved 7 tickets in project interval 3:
+<snip>
+Resolved 5 tickets in project interval 4:
+<snip>
+Resolved 11 tickets in project interval 5:
+<snip>
+1 bug ticket created for every 6.8 non-bug tickets.
+1 new non-bug ticket created for every 0.7941176470588235 tickets resolved.
+If the team continues to create new tickets at this rate, we predict the 31 outstanding tickets will have grown to 75 tickets by the time they have all been completed.
 Running 1000 simulations...
-Amount of time required to ship 27 to 61 tickets (and the number of simulations that arrived at that result):
-84 days, 1% confidence (12 simulations)
-98 days, 6% confidence (52 simulations)
-112 days, 21% confidence (154 simulations)
-126 days, 43% confidence (216 simulations)
-140 days, 68% confidence (250 simulations)
-154 days, 89% confidence (208 simulations)
-168 days, 97% confidence (83 simulations)
-182 days, 100% confidence (25 simulations)
-We are 89% confident all 27 to 61 tickets will take no more than 154 days to complete.
+Amount of time required to ship 31 to 75 tickets (and the number of simulations that arrived at that result):
+126 days, 0% confidence (5 simulations)
+140 days, 3% confidence (29 simulations)
+154 days, 8% confidence (53 simulations)
+168 days, 19% confidence (111 simulations)
+182 days, 35% confidence (158 simulations)
+196 days, 50% confidence (146 simulations)
+210 days, 65% confidence (152 simulations)
+224 days, 78% confidence (128 simulations)
+238 days, 87% confidence (93 simulations)
+252 days, 93% confidence (56 simulations)
+266 days, 97% confidence (43 simulations)
+280 days, 98% confidence (14 simulations)
+294 days, 99% confidence (8 simulations)
+308 days, 99% confidence (4 simulations)
+We are 87% confident all 31 to 75 tickets will take no more than 238 days to complete.
 ```
 
 ## Other Environment Variables
@@ -87,7 +98,7 @@ npm ci
 ## Run
 
 ```
-JIRA_PROJECT_ID=ABC JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
+JIRA_TICKET_ID="ADE-166" JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 See `example-run.sh` to run interactively.
@@ -95,7 +106,7 @@ See `example-run.sh` to run interactively.
 ## Debug
 
 ```
-NODE_OPTIONS="--inspect-brk" JIRA_PROJECT_ID=ABC JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
+NODE_OPTIONS="--inspect-brk" JIRA_TICKET_ID="ADE-166" JIRA_BOARD_ID=74 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start
 ```
 
 Then open Chrome dev tools and click the NodeJS icon.
@@ -103,7 +114,7 @@ Then open Chrome dev tools and click the NodeJS icon.
 ## Before Pushing
 
 ```
-npm run type-coverage
+npm run format && npm run type-coverage
 ```
 
 ## See Also
