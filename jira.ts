@@ -141,11 +141,12 @@ export const jiraClient = async (
   jiraProtocol: string | undefined,
   jiraUsername: string,
   jiraPassword: string,
-  jiraProjectID: string,
   jiraBoardID: string,
   durationInDays: number,
   numDaysOfHistory: number,
   // TODO: these JQL queries exclude stalled tickets (and perhaps others) that we should consider as in progress / to do.
+  // TODO: if a ticket has a fix version it will no longer appear on the kanban even if it's still in progress. Such tickets will show up here even though we shouldn't consider them truly in progress or to do.
+  // TODO: Include tickets in Resolved in the in progress count, since they still need to be QA'd.
   inProgressOrToDoJql:
     | string
     | undefined = `issuetype in standardIssueTypes() and issuetype != Epic and statusCategory in ("To Do", "In Progress")`,
@@ -193,7 +194,7 @@ export const jiraClient = async (
      *
      * @returns An array of number of tickets resolved in each time interval.
      */
-    fetchResolvedTicketsPerTimeInterval: async () => {
+    fetchResolvedTicketsPerTimeInterval: async (jiraProjectIDs: readonly string[]) => {
       // We want to know how many tickets were completed during each time interval. If not defined,
       // our time interval is just any period of two weeks.
       let historyStart = -durationInDays;
@@ -202,7 +203,7 @@ export const jiraClient = async (
 
       while (historyStart >= -1 * numDaysOfHistory) {
         const query =
-          `project = ${jiraProjectID} AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
+          `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
           `AND resolved >= ${historyStart}d AND resolved <= ${historyEnd}d`;
 
         ticketCounts.push(issuesForSearchQuery(query));
@@ -217,15 +218,15 @@ export const jiraClient = async (
      * Gets the bug ratio for "1 bug every X stories" statement.
      * @returns Number of bugs per stories count.
      */
-    fetchBugRatio: async () => {
+    fetchBugRatio: async (jiraProjectIDs: readonly string[]) => {
       // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
       // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/1
-      const bugsQuery = `project = ${jiraProjectID} AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
+      const bugsQuery = `project in (${jiraProjectIDs.join(", ")}) AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
       const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
 
       // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
       const otherTicketsQuery =
-        `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
+        `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
       const otherTicketCount = (
         await issuesForSearchQuery(otherTicketsQuery, 0)
@@ -237,18 +238,18 @@ export const jiraClient = async (
      * Gets the new story ratio for "1 new story [created] every X stories [resolved]" statement.
      * @returns Number of new stories created per resolved stories count.
      */
-    fetchDiscoveryRatio: async () => {
+    fetchDiscoveryRatio: async (jiraProjectIDs: readonly string[]) => {
       // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
       // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/1
       const nonBugTicketsCreatedQuery =
-        `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
+        `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
       const nonBugTicketsCreatedCount = (
         await issuesForSearchQuery(nonBugTicketsCreatedQuery, 0)
       ).total;
 
       const ticketsResolvedQuery =
-        `project = ${jiraProjectID} AND issuetype in standardIssueTypes() ` +
+        `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND resolved >= -${numDaysOfHistory}d`;
       const ticketsResolvedCount = (
         await issuesForSearchQuery(ticketsResolvedQuery, 0)
