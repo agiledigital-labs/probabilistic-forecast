@@ -4,14 +4,16 @@
   },
   "devDependencies": {
     "@types/jira-client": "^6.13.1",
+    "prettier": "^2.2.1",
     "ts-node": "^9.1.1",
     "type-coverage": "^2.14.6",
     "typescript": "^4.1.2"
   },
   "scripts": {
     "build": "tsc",
-    "start": "ts-node forecast.ts",
-    "type-coverage": "type-coverage"
+    "start": "ts-node index.ts",
+    "type-coverage": "type-coverage",
+    "format": "prettier -w *.ts"
   },
   "typeCoverage": {
     "atLeast": 97.33,
