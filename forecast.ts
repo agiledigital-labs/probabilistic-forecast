@@ -16,26 +16,20 @@ export const calculateTicketTarget = async (
   discoveryRatio: number,
   jiraBoardID: string,
   jiraTicketID: string,
-  inProgress: TicketResponse,
-  toDo: TicketResponse,
+  tickets: TicketResponse,
   userSuppliedTicketTarget: number
 ): Promise<{ lowTicketTarget: number; highTicketTarget: number }> => {
   let ticketTarget = userSuppliedTicketTarget;
 
-  const numberOfInProgressTickets = inProgress.total;
-  const numberOfBacklogTicketsAboveTarget = toDo.issues.indexOf(jiraTicketID);
-  if (numberOfBacklogTicketsAboveTarget === -1) {
+  const numberOfTicketsAboveTarget = tickets.issues.indexOf(jiraTicketID);
+  if (numberOfTicketsAboveTarget === -1) {
     throw new Error(
-      `Ticket ${jiraTicketID} not found in backlog for board ${jiraBoardID}`
+      `Ticket ${jiraTicketID} not found in ticket list for board ${jiraBoardID}`
     );
   }
 
   // + 1 to include the target ticket itself.
-  ticketTarget =
-    numberOfInProgressTickets + numberOfBacklogTicketsAboveTarget + 1;
-  console.log(
-    `${ticketTarget} total tickets until ${jiraTicketID} is to be completed (${numberOfInProgressTickets} in progress + ${numberOfBacklogTicketsAboveTarget} above in the backlog + ${jiraTicketID} itself)`
-  );
+  ticketTarget = numberOfTicketsAboveTarget + 1;
 
   // TODO: expand this to allow other sorts of targets in addition to a single Jira ticket ID.
   // Examples: "when will all tickets in epic x be done?", "when will all tickets with label y be done?"

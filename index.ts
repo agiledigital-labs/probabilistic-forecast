@@ -77,8 +77,7 @@ const main = async () => {
     numDaysOfHistory
   );
 
-  const inProgress = await jira.issuesForBoard("In Progress");
-  const toDo = await jira.issuesForBoard("To Do");
+  const tickets = await jira.issuesForBoard();
   const bugRatio = bugRatioOverride ?? (await jira.fetchBugRatio());
   const discoveryRatio =
     discoveryRatioOverride ?? (await jira.fetchDiscoveryRatio());
@@ -87,8 +86,7 @@ const main = async () => {
     discoveryRatio,
     jiraBoardID,
     jiraTicketID,
-    inProgress,
-    toDo,
+    tickets,
     userSuppliedTicketTarget
   );
 
