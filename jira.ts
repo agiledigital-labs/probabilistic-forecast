@@ -202,14 +202,34 @@ export const jiraClient = async (
         )) as SprintResponse;
 
         // TODO: This still has bugs: Jira tickets can appear more than once for reasons I haven't worked out yet (included in multiple sprints??), and yet other Jira tickets don't show up in this list when I expect them too.
-        const allSprintIDs = activeSprints.values.concat(futureSprints.values).map(sprint => sprint.id.toString());
-        const currentAndFutureSprints = (await Promise.all(allSprintIDs.map(sprintID => jira.getBoardIssuesForSprint(board.id, sprintID, undefined, undefined, `statusCategory in ("To Do", "In Progress")`) as Promise<BoardIssuesForSprintResponse>)));
-        const currentAndFutureSprintTickets = currentAndFutureSprints.reduce((previousValue, currentValue) => ({total: previousValue.total + currentValue.total, issues: previousValue.issues.concat(currentValue.issues)}));
+        const allSprintIDs = activeSprints.values
+          .concat(futureSprints.values)
+          .map((sprint) => sprint.id.toString());
+        const currentAndFutureSprints = await Promise.all(
+          allSprintIDs.map(
+            (sprintID) =>
+              jira.getBoardIssuesForSprint(
+                board.id,
+                sprintID,
+                undefined,
+                undefined,
+                `statusCategory in ("To Do", "In Progress")`
+              ) as Promise<BoardIssuesForSprintResponse>
+          )
+        );
+        const currentAndFutureSprintTickets = currentAndFutureSprints.reduce(
+          (previousValue, currentValue) => ({
+            total: previousValue.total + currentValue.total,
+            issues: previousValue.issues.concat(currentValue.issues),
+          })
+        );
         const backlogTickets = await getIssuesForBoard("To Do");
 
         return {
           total: currentAndFutureSprintTickets.total + backlogTickets.total,
-          issues: currentAndFutureSprintTickets.issues.map(issue => issue.key).concat(backlogTickets.issues),
+          issues: currentAndFutureSprintTickets.issues
+            .map((issue) => issue.key)
+            .concat(backlogTickets.issues),
         };
       } else {
         // For kanban boards we get all in progress tickets and all to do (backlog) tickets.
