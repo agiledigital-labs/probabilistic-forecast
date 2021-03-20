@@ -9,7 +9,13 @@ if [[ "$(node --version)" != "$(cat .nvmrc)" ]]; then
   echo "Warning: Run 'nvm use'." >/dev/stderr
 fi
 
-# Ask for Jira username and password.
+# Ask for Jira host, username and password.
+if [[ -z "$JIRA_HOST" ]]; then
+  echo "Jira host:"
+  read -r JIRA_HOST
+  export JIRA_HOST
+fi
+
 if [[ -z "$JIRA_USERNAME" ]]; then
   echo "Jira username:"
   read -r JIRA_USERNAME

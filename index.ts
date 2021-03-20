@@ -6,6 +6,7 @@ import {
 import { jiraClient } from "./jira";
 
 const daysInWeek = 7;
+const jiraHost = process.env.JIRA_HOST;
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
 const userProvidedJiraProjectIDs = (process.env.JIRA_PROJECT_ID ?? "")
@@ -43,13 +44,14 @@ const durationInDays =
 
 const main = async () => {
   if (
+    jiraHost === undefined ||
     jiraUsername === undefined ||
     jiraPassword === undefined ||
     jiraBoardID === undefined ||
     jiraTicketID === undefined
   ) {
     console.error(
-      "Usage: JIRA_BOARD_ID=74 JIRA_TICKET_ID=ADE-1234 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start"
+      `Usage: JIRA_HOST="example.com" JIRA_BOARD_ID=74 JIRA_TICKET_ID=ADE-1234 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start`
     );
     return;
   }
@@ -65,7 +67,7 @@ const main = async () => {
 
   console.log(`Connecting to Jira and getting board ${jiraBoardID}.`);
   const jira = await jiraClient(
-    process.env.JIRA_HOST ?? "jira.agiledigital.com.au",
+    jiraHost,
     process.env.JIRA_PORT,
     process.env.JIRA_PROTOCOL ?? "https",
     jiraUsername,
