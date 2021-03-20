@@ -42,6 +42,99 @@ const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
   };
 };
 
+const issuesForScrumBoard = async (
+  jira: JiraApi,
+  board: JiraBoard,
+  inProgressOrToDoJql: string
+) => {
+  // For scrum boards we have to get all (non-completed) tickets in all active sprints, then all (non-completed) tickets in all future sprints and finally all backlog tickets.
+  const activeSprints = (await jira.getAllSprints(
+    board.id,
+    undefined,
+    undefined,
+    "active"
+  )) as SprintResponse;
+  const futureSprints = (await jira.getAllSprints(
+    board.id,
+    undefined,
+    undefined,
+    "future"
+  )) as SprintResponse;
+
+  const allSprintIDs = activeSprints.values
+    .concat(futureSprints.values)
+    .map((sprint) => sprint.id.toString());
+  const currentAndFutureSprints = await Promise.all(
+    allSprintIDs.map(
+      (sprintID) =>
+        // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
+        jira.getBoardIssuesForSprint(
+          board.id,
+          sprintID,
+          undefined,
+          1000,
+          inProgressOrToDoJql
+        ) as Promise<BoardIssuesForSprintResponse>
+    )
+  );
+  const currentAndFutureSprintTickets = currentAndFutureSprints.reduce(
+    (previousValue, currentValue) => ({
+      total: previousValue.total + currentValue.total,
+      issues: previousValue.issues.concat(currentValue.issues),
+    })
+  );
+  // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
+  const backlogTickets = await jira.getIssuesForBacklog(
+    board.id,
+    undefined,
+    1000,
+    inProgressOrToDoJql
+  );
+
+  return {
+    total: currentAndFutureSprintTickets.total + backlogTickets.total,
+    issues: currentAndFutureSprintTickets.issues
+      .concat(backlogTickets.issues)
+      .map((issue) => issue.key),
+  };
+};
+
+const issuesForKanbanBoard = async (
+  jira: JiraApi,
+  board: JiraBoard,
+  inProgressOrToDoJql: string,
+  kanbanInProgressJql: string,
+  kanbanToDoJql: string
+) => {
+  // For kanban boards we get all in progress tickets and all to do (backlog) tickets.
+  // HACK: The Jira API won't let us use `getIssuesForBacklog` for kanban boards, so we first get in progress tickets, then "to do" tickets, then combine.
+
+  // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
+  const inProgressTickets = parseJiraResponse(
+    await jira.getIssuesForBoard(
+      board.id,
+      undefined,
+      1000,
+      `(${inProgressOrToDoJql}) and (${kanbanInProgressJql})`
+    )
+  );
+
+  // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
+  const toDoTickets = parseJiraResponse(
+    await jira.getIssuesForBoard(
+      board.id,
+      undefined,
+      1000,
+      `(${inProgressOrToDoJql}) and (${kanbanToDoJql})`
+    )
+  );
+
+  return {
+    total: inProgressTickets.total + toDoTickets.total,
+    issues: inProgressTickets.issues.concat(toDoTickets.issues),
+  };
+};
+
 export const jiraClient = async (
   jiraHost: string,
   jiraPort: string | undefined,
@@ -170,92 +263,20 @@ export const jiraClient = async (
       return ticketsResolvedCount / nonBugTicketsCreatedCount;
     },
     /**
-     * Returns all tickets (issue keys) for the specified board in the specified status category.
-     * Handles pagination with the Jira API and returns everything.
+     * Returns all in progress or to do tickets (issue keys) for the specified board, in order.
      *
      * @returns An object consisting of issues and total count.
      */
-    issuesForBoard: async (): Promise<TicketResponse> => {
-      if (board.type === "scrum") {
-        // For scrum boards we have to get all (non-completed) tickets in all active sprints, then all (non-completed) tickets in all future sprints and finally all backlog tickets.
-        const activeSprints = (await jira.getAllSprints(
-          board.id,
-          undefined,
-          undefined,
-          "active"
-        )) as SprintResponse;
-        const futureSprints = (await jira.getAllSprints(
-          board.id,
-          undefined,
-          undefined,
-          "future"
-        )) as SprintResponse;
-
-        const allSprintIDs = activeSprints.values
-          .concat(futureSprints.values)
-          .map((sprint) => sprint.id.toString());
-        const currentAndFutureSprints = await Promise.all(
-          allSprintIDs.map(
-            (sprintID) =>
-              // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
-              jira.getBoardIssuesForSprint(
-                board.id,
-                sprintID,
-                undefined,
-                1000,
-                inProgressOrToDoJql
-              ) as Promise<BoardIssuesForSprintResponse>
-          )
-        );
-        const currentAndFutureSprintTickets = currentAndFutureSprints.reduce(
-          (previousValue, currentValue) => ({
-            total: previousValue.total + currentValue.total,
-            issues: previousValue.issues.concat(currentValue.issues),
-          })
-        );
-        // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
-        const backlogTickets = await jira.getIssuesForBacklog(
-          board.id,
-          undefined,
-          1000,
-          inProgressOrToDoJql
-        );
-
-        return {
-          total: currentAndFutureSprintTickets.total + backlogTickets.total,
-          issues: currentAndFutureSprintTickets.issues
-            .concat(backlogTickets.issues)
-            .map((issue) => issue.key),
-        };
-      } else {
-        // For kanban boards we get all in progress tickets and all to do (backlog) tickets.
-        // HACK: The Jira API won't let us use `getIssuesForBacklog` for kanban boards, so we first get in progress tickets, then "to do" tickets, then combine.
-
-        // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
-        const inProgressTickets = parseJiraResponse(
-          await jira.getIssuesForBoard(
-            board.id,
-            undefined,
-            1000,
-            `(${inProgressOrToDoJql}) and (${kanbanInProgressJql})`
-          )
-        );
-
-        // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
-        const toDoTickets = parseJiraResponse(
-          await jira.getIssuesForBoard(
-            board.id,
-            undefined,
-            1000,
-            `(${inProgressOrToDoJql}) and (${kanbanToDoJql})`
-          )
-        );
-
-        return {
-          total: inProgressTickets.total + toDoTickets.total,
-          issues: inProgressTickets.issues.concat(toDoTickets.issues),
-        };
-      }
+    issuesForBoard: (): Promise<TicketResponse> => {
+      return board.type === "scrum"
+        ? issuesForScrumBoard(jira, board, inProgressOrToDoJql)
+        : issuesForKanbanBoard(
+            jira,
+            board,
+            inProgressOrToDoJql,
+            kanbanInProgressJql,
+            kanbanToDoJql
+          );
     },
   };
 };
