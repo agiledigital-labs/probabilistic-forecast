@@ -117,9 +117,14 @@ const main = async () => {
     console.log("No bug tickets created.");
   }
 
-  console.log(
-    `1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`
-  );
+  if (isFinite(discoveryRatio)) {
+    console.log(
+      `1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`
+    );
+  } else {
+    console.log("No non-bug tickets created.");
+  }
+
   console.log(
     `If the team continues to create new tickets at this rate, we predict the ${lowTicketTarget} outstanding tickets ` +
       `will have grown to ${highTicketTarget} tickets by the time they have all been completed.`

@@ -164,12 +164,6 @@ export const jiraClient = async (
 
   const board = (await jira.getBoard(jiraBoardID)) as JiraBoard;
 
-  if (board.type === "scrum") {
-    // TODO `getIssuesForBoard` doesn't appear to return tickets in a useful backlog order for scrum boards, so we have to do some work to support scrum boards.
-    // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/7
-    console.warn("Scrum boards are not (yet) supported.");
-  }
-
   if (board.type !== "kanban" && board.type !== "scrum") {
     throw new Error(
       `Unknown board type [${board.type}] for board [${jiraBoardID}].`
