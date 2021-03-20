@@ -194,7 +194,9 @@ export const jiraClient = async (
      *
      * @returns An array of number of tickets resolved in each time interval.
      */
-    fetchResolvedTicketsPerTimeInterval: async (jiraProjectIDs: readonly string[]) => {
+    fetchResolvedTicketsPerTimeInterval: async (
+      jiraProjectIDs: readonly string[]
+    ) => {
       // We want to know how many tickets were completed during each time interval. If not defined,
       // our time interval is just any period of two weeks.
       let historyStart = -durationInDays;
@@ -203,7 +205,9 @@ export const jiraClient = async (
 
       while (historyStart >= -1 * numDaysOfHistory) {
         const query =
-          `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
+          `project in (${jiraProjectIDs.join(
+            ", "
+          )}) AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
           `AND resolved >= ${historyStart}d AND resolved <= ${historyEnd}d`;
 
         ticketCounts.push(issuesForSearchQuery(query));
@@ -221,12 +225,16 @@ export const jiraClient = async (
     fetchBugRatio: async (jiraProjectIDs: readonly string[]) => {
       // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
       // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/1
-      const bugsQuery = `project in (${jiraProjectIDs.join(", ")}) AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
+      const bugsQuery = `project in (${jiraProjectIDs.join(
+        ", "
+      )}) AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
       const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
 
       // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
       const otherTicketsQuery =
-        `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() ` +
+        `project in (${jiraProjectIDs.join(
+          ", "
+        )}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
       const otherTicketCount = (
         await issuesForSearchQuery(otherTicketsQuery, 0)
@@ -242,14 +250,18 @@ export const jiraClient = async (
       // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
       // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/1
       const nonBugTicketsCreatedQuery =
-        `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() ` +
+        `project in (${jiraProjectIDs.join(
+          ", "
+        )}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
       const nonBugTicketsCreatedCount = (
         await issuesForSearchQuery(nonBugTicketsCreatedQuery, 0)
       ).total;
 
       const ticketsResolvedQuery =
-        `project in (${jiraProjectIDs.join(", ")}) AND issuetype in standardIssueTypes() ` +
+        `project in (${jiraProjectIDs.join(
+          ", "
+        )}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND resolved >= -${numDaysOfHistory}d`;
       const ticketsResolvedCount = (
         await issuesForSearchQuery(ticketsResolvedQuery, 0)

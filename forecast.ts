@@ -18,7 +18,11 @@ export const calculateTicketTarget = async (
   jiraTicketID: string,
   tickets: TicketResponse,
   userSuppliedTicketTarget: number
-): Promise<{ numberOfTicketsAboveTarget: number, lowTicketTarget: number; highTicketTarget: number }> => {
+): Promise<{
+  numberOfTicketsAboveTarget: number;
+  lowTicketTarget: number;
+  highTicketTarget: number;
+}> => {
   let ticketTarget = userSuppliedTicketTarget;
 
   const numberOfTicketsAboveTarget = tickets.issues.indexOf(jiraTicketID);

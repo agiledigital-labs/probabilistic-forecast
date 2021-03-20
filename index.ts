@@ -8,7 +8,10 @@ import { jiraClient } from "./jira";
 const daysInWeek = 7;
 const jiraUsername = process.env.JIRA_USERNAME;
 const jiraPassword = process.env.JIRA_PASSWORD;
-const userProvidedJiraProjectIDs = (process.env.JIRA_PROJECT_ID ?? "").split(",").map(x => x.trim()).filter(x => x !== "");
+const userProvidedJiraProjectIDs = (process.env.JIRA_PROJECT_ID ?? "")
+  .split(",")
+  .map((x) => x.trim())
+  .filter((x) => x !== "");
 const jiraBoardID = process.env.JIRA_BOARD_ID;
 const jiraTicketID = process.env.JIRA_TICKET_ID;
 // the number of days to go back to collect data for simulation
@@ -73,20 +76,32 @@ const main = async () => {
   );
 
   // All in progress or to do Jira tickets for the given board (either kanban or scrum).
-  console.log(`Counting tickets ahead of ${jiraTicketID} in board ${jiraBoardID}...`);
+  console.log(
+    `Counting tickets ahead of ${jiraTicketID} in board ${jiraBoardID}...`
+  );
   const tickets = await jira.issuesForBoard();
 
   // The Jira project IDs used to measure team performance (velocity, ticket creation rate, etc).
   // If not provided by the user, will be inferred based on the unique project IDs of the tickets above (via roundtrip through a set).
   // There is a slight gotcha here: if the team has resolved a bunch of tickets from a project that isn't represented among the tickets
   // above, the velocity will appear lower than it actually is. To avoid this, specify a complete set of project IDs explicitly.
-  const inferredJiraProjectIDs = [...(new Set(tickets.issues.map(x => x.substring(0, x.indexOf("-")))))];
-  const jiraProjectIDs = userProvidedJiraProjectIDs.length > 0 ? userProvidedJiraProjectIDs : inferredJiraProjectIDs;
+  const inferredJiraProjectIDs = [
+    ...new Set(tickets.issues.map((x) => x.substring(0, x.indexOf("-")))),
+  ];
+  const jiraProjectIDs =
+    userProvidedJiraProjectIDs.length > 0
+      ? userProvidedJiraProjectIDs
+      : inferredJiraProjectIDs;
 
-  const bugRatio = bugRatioOverride ?? (await jira.fetchBugRatio(jiraProjectIDs));
+  const bugRatio =
+    bugRatioOverride ?? (await jira.fetchBugRatio(jiraProjectIDs));
   const discoveryRatio =
     discoveryRatioOverride ?? (await jira.fetchDiscoveryRatio(jiraProjectIDs));
-  const { numberOfTicketsAboveTarget, lowTicketTarget, highTicketTarget } = await calculateTicketTarget(
+  const {
+    numberOfTicketsAboveTarget,
+    lowTicketTarget,
+    highTicketTarget,
+  } = await calculateTicketTarget(
     bugRatio,
     discoveryRatio,
     jiraBoardID,
@@ -95,13 +110,21 @@ const main = async () => {
     userSuppliedTicketTarget
   );
 
-  console.log(`There are ${tickets.issues.length} tickets in board ${jiraBoardID} that are either in progress or still to do. Of those, ${numberOfTicketsAboveTarget} tickets are ahead of ${jiraTicketID} in priority order.`);
+  console.log(
+    `There are ${tickets.issues.length} tickets in board ${jiraBoardID} that are either in progress or still to do. Of those, ${numberOfTicketsAboveTarget} tickets are ahead of ${jiraTicketID} in priority order.`
+  );
 
   console.log(`Project interval is ${timeLength} ${timeUnit}`);
-  console.log(`The team's past performance will be measured based on tickets in project(s) ${jiraProjectIDs.join(", ")} that have been resolved in the last ${
-    numDaysOfHistory / durationInDays
-  } project intervals (${numDaysOfHistory} days of history will be considered in total).`);
-  const resolvedTicketCounts = await jira.fetchResolvedTicketsPerTimeInterval(jiraProjectIDs);
+  console.log(
+    `The team's past performance will be measured based on tickets in project(s) ${jiraProjectIDs.join(
+      ", "
+    )} that have been resolved in the last ${
+      numDaysOfHistory / durationInDays
+    } project intervals (${numDaysOfHistory} days of history will be considered in total).`
+  );
+  const resolvedTicketCounts = await jira.fetchResolvedTicketsPerTimeInterval(
+    jiraProjectIDs
+  );
 
   await Promise.all(
     resolvedTicketCounts.map(async (ticketsInTimeInterval, idx) => {
