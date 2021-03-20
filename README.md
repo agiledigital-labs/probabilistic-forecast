@@ -14,7 +14,7 @@ Jira plugin for probabilistic forecasting. (Currently just a command line script
 Let's say you have a ticket ADE-166 some way down your backlog. Let's say that ticket is in project ADE and the ID of the Jira board (kanban) is 74. ADE-166 represents the completion of a feature that you're interested in. You want to know when that feature will be ready. Here's what you do:
 
 ```
-$ JIRA_HOST="example.com"
+$ JIRA_HOST="example.com" \
 > JIRA_TICKET_ID="ADE-166" \
 > JIRA_BOARD_ID="74" \
 > JIRA_USERNAME=${JIRA_USERNAME} \
