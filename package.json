@@ -1,13 +1,13 @@
 {
   "dependencies": {
-    "jira-client": "^6.21.1"
+    "jira-client": "6.21.1"
   },
   "devDependencies": {
-    "@types/jira-client": "^6.13.1",
-    "prettier": "^2.2.1",
-    "ts-node": "^9.1.1",
-    "type-coverage": "^2.14.6",
-    "typescript": "^4.1.2"
+    "@types/jira-client": "6.21.0",
+    "prettier": "2.2.1",
+    "ts-node": "9.1.1",
+    "type-coverage": "2.17.0",
+    "typescript": "4.2.3"
   },
   "scripts": {
     "build": "tsc",
