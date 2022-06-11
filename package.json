@@ -1,9 +1,9 @@
 {
   "dependencies": {
-    "jira-client": "6.21.1"
+    "jira-client": "6.23.0"
   },
   "devDependencies": {
-    "@types/jira-client": "6.21.1",
+    "@types/jira-client": "6.21.3",
     "prettier": "2.6.2",
     "ts-node": "10.1.0",
     "type-coverage": "2.21.1",
