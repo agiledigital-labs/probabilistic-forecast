@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "jira-client": "6.21.1"
+    "jira-client": "8.2.2"
   },
   "devDependencies": {
     "@types/jira-client": "6.21.1",
