@@ -4,11 +4,6 @@ Jira plugin for probabilistic forecasting. (Currently just a command line script
 
 [![Type Coverage](https://img.shields.io/badge/dynamic/json.svg?label=type-coverage&prefix=%E2%89%A5&suffix=%&query=$.typeCoverage.atLeast&uri=https%3A%2F%2Fraw.githubusercontent.com%2Fagiledigital-labs%2Fprobabilistic-forecast%2Fmaster%2Fpackage.json)](https://github.com/plantain-00/type-coverage)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/agiledigital-labs/probabilistic-forecast/Node.js%20CI)
-[![deepcode](https://www.deepcode.ai/api/gh/badge?key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwbGF0Zm9ybTEiOiJnaCIsIm93bmVyMSI6ImFnaWxlZGlnaXRhbC1sYWJzIiwicmVwbzEiOiJwcm9iYWJpbGlzdGljLWZvcmVjYXN0IiwiaW5jbHVkZUxpbnQiOmZhbHNlLCJhdXRob3JJZCI6Mjg4NDIsImlhdCI6MTYyMDAxOTE2NH0.6Vk1JbymjTWep21SvV7pxDUcgK3rX9RfWCvmf707Bq4)](https://www.deepcode.ai/app/gh/agiledigital-labs/probabilistic-forecast/_/dashboard?utm_content=gh%2Fagiledigital-labs%2Fprobabilistic-forecast)
-
-[![dependencies Status](https://david-dm.org/agiledigital-labs/probabilistic-forecast/status.svg)](https://david-dm.org/agiledigital-labs/probabilistic-forecast)
-[![devDependencies Status](https://david-dm.org/agiledigital-labs/probabilistic-forecast/dev-status.svg)](https://david-dm.org/agiledigital-labs/probabilistic-forecast?type=dev)
-[![peerDependencies Status](https://david-dm.org/agiledigital-labs/probabilistic-forecast/peer-status.svg)](https://david-dm.org/agiledigital-labs/probabilistic-forecast?type=peer)
 
 ## Example Output
 
