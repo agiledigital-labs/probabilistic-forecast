@@ -1,9 +1,11 @@
 {
   "dependencies": {
-    "jira-client": "6.21.1"
+    "jira-client": "8.2.2",
+    "oauth": "^0.10.0"
   },
   "devDependencies": {
-    "@types/jira-client": "6.21.1",
+    "@types/jira-client": "^7.1.9",
+    "@types/oauth": "^0.9.5",
     "prettier": "2.6.2",
     "ts-node": "10.1.0",
     "type-coverage": "2.21.1",
