@@ -285,5 +285,9 @@ export const jiraClient = async (
             kanbanToDoJql
           );
     },
+
+    commentIssue: async (jiraIssueId: string, comment: string) => {
+      return await jira.addComment(jiraIssueId, comment);
+    }
   };
 };

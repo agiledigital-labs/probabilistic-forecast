@@ -1,4 +1,4 @@
-import { TicketResponse } from "./jira";
+import { TicketResponse } from "../../services/jira";
 
 /**
  * Estimates the number of tickets to complete before getting to the supplied ticket.
@@ -82,9 +82,9 @@ export const simulations = async (
     let storiesDone = 0;
     while (storiesDone <= ticketTarget) {
       const numTimeIntervals = resolvedTicketCounts.length;
-      storiesDone += resolvedTicketCounts[
-        Math.floor(Math.random() * numTimeIntervals)
-      ]!;
+      storiesDone +=
+        resolvedTicketCounts[Math.floor(Math.random() * numTimeIntervals)]!;
+      // @ts-ignore
       results[i]++;
     }
   }
@@ -99,7 +99,7 @@ export const simulations = async (
  * @param highTicketTarget Maximum number of tickets to complete.
  * @param simulationResults Simulation outcomes.
  */
-export const printPredictions = (
+export const getPredictionReport = (
   lowTicketTarget: number,
   highTicketTarget: number,
   simulationResults: readonly number[],
@@ -107,10 +107,8 @@ export const printPredictions = (
   confidencePercentageThreshold: number,
   durationInDays: number
 ) => {
-  console.log(
-    `Amount of time required to ship ${lowTicketTarget} to ${highTicketTarget} tickets ` +
-      `(and the number of simulations that arrived at that result):`
-  );
+  const reportTitle =`Amount of time required to ship ${lowTicketTarget} to ${highTicketTarget} tickets ` +
+      `(and the number of simulations that arrived at that result):`;
 
   const percentages: Record<string, number> = {};
   const cumulativePercentages: Record<string, number> = {};
@@ -134,7 +132,7 @@ export const printPredictions = (
   const uniquePredictions = Object.keys(numSimulationsPredicting);
 
   // For each result (number of time intervals) predicted by at least one of the simulations
-  for (const numIntervalsPredicted of uniquePredictions) {
+  const uniquePredictionReport = uniquePredictions.reduce((acc, numIntervalsPredicted) => {
     percentages[numIntervalsPredicted] =
       ((numSimulationsPredicting[numIntervalsPredicted] ?? 0) /
         numSimulations) *
@@ -157,25 +155,25 @@ export const printPredictions = (
 
     // Print the confidence (i.e. likelihood) we give for completing the tickets in this amount
     // of time.
-    console.log(
-      `${Number(numIntervalsPredicted) * durationInDays} days, ` +
+    const reportText = `${Number(numIntervalsPredicted) * durationInDays} days, ` +
         `${Math.floor(
           cumulativePercentages[numIntervalsPredicted] ?? 0
         )}% confidence ` +
         `(${numSimulationsPredicting[numIntervalsPredicted]} simulation` +
         // Pluralize
-        `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`
-    );
-  }
+        `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`;
 
-  console.log(
-    `We are ${
+    return `${acc}\n${reportText}`;
+  }, "");
+
+  const finalReport = `We are ${
       resultAboveThreshold
         ? Math.floor(cumulativePercentages[resultAboveThreshold] ?? 0)
         : "?"
     }% confident all ` +
       `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${
         Number(resultAboveThreshold) * durationInDays
-      } days to complete.`
-  );
+      } days to complete.`;
+
+  return `${reportTitle}\n\n${uniquePredictionReport}\n\n${finalReport}`;
 };

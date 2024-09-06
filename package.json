@@ -1,11 +1,16 @@
 {
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.645.0",
     "jira-client": "8.2.2",
     "oauth": "^0.10.0"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
     "@types/jira-client": "^7.1.9",
     "@types/oauth": "^0.9.5",
+    "aws-cdk": "^2.155.0",
+    "aws-cdk-lib": "^2.155.0",
+    "constructs": "^10.3.0",
     "prettier": "2.6.2",
     "ts-node": "10.8.1",
     "type-coverage": "2.21.1",
