@@ -85,7 +85,7 @@ export const simulations = async (
       storiesDone += resolvedTicketCounts[
         Math.floor(Math.random() * numTimeIntervals)
       ]!;
-      results[i]++;
+      results[i]!++;
     }
   }
 
