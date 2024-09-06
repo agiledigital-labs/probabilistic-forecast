@@ -20,7 +20,7 @@ const numDaysOfHistory =
   Number.parseInt(process.env.NUM_WEEKS_OF_HISTORY ?? "10") * daysInWeek;
 
 const confidencePercentageThreshold = Number.parseInt(
-  process.env.CONFIDENCE_PERCENTAGE_THRESHOLD ?? "80"
+  process.env.CONFIDENCE_PERCENTAGE_THRESHOLD ?? "80",
 );
 const numSimulations = Number.parseInt(process.env.NUM_SIMULATIONS ?? "1000");
 // length and units are in separate variables
@@ -29,7 +29,7 @@ const timeLength = Number.parseInt(process.env.TIME_LENGTH ?? "2");
 const timeUnit = process.env.TIME_UNIT ?? "weeks";
 
 const userSuppliedTicketTarget = Number.parseInt(
-  process.env.TICKET_TARGET ?? "60"
+  process.env.TICKET_TARGET ?? "60",
 );
 const bugRatioOverride = process.env.BUG_RATIO
   ? Number.parseInt(process.env.BUG_RATIO)
@@ -37,6 +37,18 @@ const bugRatioOverride = process.env.BUG_RATIO
 const discoveryRatioOverride = process.env.DISCOVERY_RATIO
   ? Number.parseInt(process.env.DISCOVERY_RATIO)
   : undefined;
+
+// The default Jira bug/fault issue type. Overridable if you use something
+// else (or if you use multiple types that should all be considered 'bugs' by the forecast)
+const defaultBugIssueTypes = ["Bug"];
+const bugIssueTypes =
+  process.env.BUG_ISSUE_TYPES === undefined ||
+  process.env.BUG_ISSUE_TYPES === null ||
+  process.env.BUG_ISSUE_TYPES?.trim() === ""
+    ? defaultBugIssueTypes
+    : process.env.BUG_ISSUE_TYPES.split(",")
+        .map((issueType) => issueType.trim())
+        .filter((issueType) => issueType !== "");
 
 // convert provided time interval into days
 const durationInDays =
@@ -51,7 +63,7 @@ const main = async () => {
     jiraTicketID === undefined
   ) {
     console.error(
-      `Usage: JIRA_HOST="example.com" JIRA_BOARD_ID=74 JIRA_TICKET_ID=ADE-1234 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start`
+      `Usage: JIRA_HOST="example.com" JIRA_BOARD_ID=74 JIRA_TICKET_ID=ADE-1234 JIRA_USERNAME=foo JIRA_PASSWORD=bar npm run start`,
     );
     return;
   }
@@ -60,7 +72,7 @@ const main = async () => {
     !(timeUnit === "weeks" || timeUnit === "days" || timeUnit === undefined)
   ) {
     console.error(
-      "Only weeks and days are supported for project interval time units"
+      "Only weeks and days are supported for project interval time units",
     );
     return;
   }
@@ -74,12 +86,12 @@ const main = async () => {
     jiraPassword,
     jiraBoardID,
     durationInDays,
-    numDaysOfHistory
+    numDaysOfHistory,
   );
 
   // All in progress or to do Jira tickets for the given board (either kanban or scrum).
   console.log(
-    `Counting tickets ahead of ${jiraTicketID} in board ${jiraBoardID}...`
+    `Counting tickets ahead of ${jiraTicketID} in board ${jiraBoardID}...`,
   );
   const tickets = await jira.issuesForBoard();
 
@@ -96,49 +108,47 @@ const main = async () => {
       : inferredJiraProjectIDs;
 
   const bugRatio =
-    bugRatioOverride ?? (await jira.fetchBugRatio(jiraProjectIDs));
+    bugRatioOverride ??
+    (await jira.fetchBugRatio(jiraProjectIDs, bugIssueTypes));
   const discoveryRatio =
-    discoveryRatioOverride ?? (await jira.fetchDiscoveryRatio(jiraProjectIDs));
-  const {
-    numberOfTicketsAboveTarget,
-    lowTicketTarget,
-    highTicketTarget,
-  } = await calculateTicketTarget(
-    bugRatio,
-    discoveryRatio,
-    jiraBoardID,
-    jiraTicketID,
-    tickets,
-    userSuppliedTicketTarget
-  );
+    discoveryRatioOverride ??
+    (await jira.fetchDiscoveryRatio(jiraProjectIDs, bugIssueTypes));
+  const { numberOfTicketsAboveTarget, lowTicketTarget, highTicketTarget } =
+    await calculateTicketTarget(
+      bugRatio,
+      discoveryRatio,
+      jiraBoardID,
+      jiraTicketID,
+      tickets,
+      userSuppliedTicketTarget,
+    );
 
   console.log(
-    `There are ${tickets.issues.length} tickets in board ${jiraBoardID} that are either in progress or still to do. Of those, ${numberOfTicketsAboveTarget} tickets are ahead of ${jiraTicketID} in priority order.`
+    `There are ${tickets.issues.length} tickets in board ${jiraBoardID} that are either in progress or still to do. Of those, ${numberOfTicketsAboveTarget} tickets are ahead of ${jiraTicketID} in priority order.`,
   );
 
   console.log(`Project interval is ${timeLength} ${timeUnit}`);
   console.log(
     `The team's past performance will be measured based on tickets in project(s) ${jiraProjectIDs.join(
-      ", "
+      ", ",
     )} that have been resolved in the last ${
       numDaysOfHistory / durationInDays
-    } project intervals (${numDaysOfHistory} days of history will be considered in total).`
+    } project intervals (${numDaysOfHistory} days of history will be considered in total).`,
   );
-  const resolvedTicketCounts = await jira.fetchResolvedTicketsPerTimeInterval(
-    jiraProjectIDs
-  );
+  const resolvedTicketCounts =
+    await jira.fetchResolvedTicketsPerTimeInterval(jiraProjectIDs);
 
   await Promise.all(
     resolvedTicketCounts.map(async (ticketsInTimeInterval, idx) => {
       console.log(
         `Resolved ${ticketsInTimeInterval.total} tickets in project interval ${
           idx + 1
-        }:`
+        }:`,
       );
       // Print the ticket IDs. This is useful if you're running simulations regularly and saving
       // the results.
       console.log(ticketsInTimeInterval.issues.join(", "));
-    })
+    }),
   );
 
   if (isFinite(bugRatio)) {
@@ -149,7 +159,7 @@ const main = async () => {
 
   if (isFinite(discoveryRatio)) {
     console.log(
-      `1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`
+      `1 new non-bug ticket created for every ${discoveryRatio} tickets resolved.`,
     );
   } else {
     console.log("No non-bug tickets created.");
@@ -157,14 +167,14 @@ const main = async () => {
 
   console.log(
     `If the team continues to create new tickets at this rate, we predict the ${lowTicketTarget} outstanding tickets ` +
-      `will have grown to ${highTicketTarget} tickets by the time they have all been completed.`
+      `will have grown to ${highTicketTarget} tickets by the time they have all been completed.`,
   );
 
   console.log(`Running ${numSimulations} simulations...`);
   const simulationResults = await simulations(
     resolvedTicketCounts.map((tickets) => tickets.total),
     highTicketTarget,
-    numSimulations
+    numSimulations,
   );
 
   printPredictions(
@@ -173,7 +183,7 @@ const main = async () => {
     simulationResults,
     numSimulations,
     confidencePercentageThreshold,
-    durationInDays
+    durationInDays,
   );
 };
 

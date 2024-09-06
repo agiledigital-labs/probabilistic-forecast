@@ -45,20 +45,20 @@ const parseJiraResponse = (response: JiraApi.JsonResponse): TicketResponse => {
 const issuesForScrumBoard = async (
   jira: JiraApi,
   board: JiraBoard,
-  inProgressOrToDoJql: string
+  inProgressOrToDoJql: string,
 ) => {
   // For scrum boards we have to get all (non-completed) tickets in all active sprints, then all (non-completed) tickets in all future sprints and finally all backlog tickets.
   const activeSprints = (await jira.getAllSprints(
     board.id,
     undefined,
     undefined,
-    "active"
+    "active",
   )) as SprintResponse;
   const futureSprints = (await jira.getAllSprints(
     board.id,
     undefined,
     undefined,
-    "future"
+    "future",
   )) as SprintResponse;
 
   const allSprintIDs = activeSprints.values
@@ -73,22 +73,22 @@ const issuesForScrumBoard = async (
           sprintID,
           undefined,
           1000,
-          inProgressOrToDoJql
-        ) as Promise<BoardIssuesForSprintResponse>
-    )
+          inProgressOrToDoJql,
+        ) as Promise<BoardIssuesForSprintResponse>,
+    ),
   );
   const currentAndFutureSprintTickets = currentAndFutureSprints.reduce(
     (previousValue, currentValue) => ({
       total: previousValue.total + currentValue.total,
       issues: previousValue.issues.concat(currentValue.issues),
-    })
+    }),
   );
   // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
   const backlogTickets = await jira.getIssuesForBacklog(
     board.id,
     undefined,
     1000,
-    inProgressOrToDoJql
+    inProgressOrToDoJql,
   );
 
   return {
@@ -104,7 +104,7 @@ const issuesForKanbanBoard = async (
   board: JiraBoard,
   inProgressOrToDoJql: string,
   kanbanInProgressJql: string,
-  kanbanToDoJql: string
+  kanbanToDoJql: string,
 ) => {
   // For kanban boards we get all in progress tickets and all to do (backlog) tickets.
   // HACK: The Jira API won't let us use `getIssuesForBacklog` for kanban boards, so we first get in progress tickets, then "to do" tickets, then combine.
@@ -115,8 +115,8 @@ const issuesForKanbanBoard = async (
       board.id,
       undefined,
       1000,
-      `(${inProgressOrToDoJql}) and (${kanbanInProgressJql})`
-    )
+      `(${inProgressOrToDoJql}) and (${kanbanInProgressJql})`,
+    ),
   );
 
   // TODO: handle pagination and get all results instead of assuming they will always be less than 1000.
@@ -125,8 +125,8 @@ const issuesForKanbanBoard = async (
       board.id,
       undefined,
       1000,
-      `(${inProgressOrToDoJql}) and (${kanbanToDoJql})`
-    )
+      `(${inProgressOrToDoJql}) and (${kanbanToDoJql})`,
+    ),
   );
 
   return {
@@ -151,7 +151,7 @@ export const jiraClient = async (
     | string
     | undefined = `issuetype in standardIssueTypes() and issuetype != Epic and statusCategory in ("To Do", "In Progress")`,
   kanbanInProgressJql: string | undefined = `statusCategory = "In Progress"`,
-  kanbanToDoJql: string | undefined = `statusCategory = "To Do"`
+  kanbanToDoJql: string | undefined = `statusCategory = "To Do"`,
 ) => {
   const jira = new JiraApi({
     protocol: jiraProtocol,
@@ -167,7 +167,7 @@ export const jiraClient = async (
 
   if (board.type !== "kanban" && board.type !== "scrum") {
     throw new Error(
-      `Unknown board type [${board.type}] for board [${jiraBoardID}].`
+      `Unknown board type [${board.type}] for board [${jiraBoardID}].`,
     );
   }
 
@@ -180,7 +180,7 @@ export const jiraClient = async (
    */
   const issuesForSearchQuery = async (
     searchQuery: string,
-    maxResults: number = 1000
+    maxResults: number = 1000,
   ): Promise<TicketResponse> => {
     const issuesResp = await jira.searchJira(searchQuery, { maxResults });
     return parseJiraResponse(issuesResp);
@@ -195,7 +195,7 @@ export const jiraClient = async (
      * @returns An array of number of tickets resolved in each time interval.
      */
     fetchResolvedTicketsPerTimeInterval: async (
-      jiraProjectIDs: readonly string[]
+      jiraProjectIDs: readonly string[],
     ) => {
       // We want to know how many tickets were completed during each time interval. If not defined,
       // our time interval is just any period of two weeks.
@@ -206,7 +206,7 @@ export const jiraClient = async (
       while (historyStart >= -1 * numDaysOfHistory) {
         const query =
           `project in (${jiraProjectIDs.join(
-            ", "
+            ", ",
           )}) AND issuetype in standardIssueTypes() AND issuetype != Epic ` +
           `AND resolved >= ${historyStart}d AND resolved <= ${historyEnd}d`;
 
@@ -220,22 +220,26 @@ export const jiraClient = async (
     },
     /**
      * Gets the bug ratio for "1 bug every X stories" statement.
+     * @bugIssueTypes The issue types that represents bugs, e.g. Bug, Fault
      * @returns Number of bugs per stories count.
      */
-    fetchBugRatio: async (jiraProjectIDs: readonly string[]) => {
+    fetchBugRatio: async (
+      jiraProjectIDs: readonly string[],
+      bugIssueTypes: readonly string[],
+    ) => {
       // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
       // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/1
       const bugsQuery = `project in (${jiraProjectIDs.join(
-        ", "
-      )}) AND issuetype = Fault AND created >= -${numDaysOfHistory}d`;
+        ", ",
+      )}) AND issuetype IN (${bugIssueTypes.join(",")}) AND created >= -${numDaysOfHistory}d`;
       const bugCount = (await issuesForSearchQuery(bugsQuery, 0)).total;
 
       // Assuming the spreadsheet doesn't count bugs as stories, so exclude bugs in this query.
       const otherTicketsQuery =
         `project in (${jiraProjectIDs.join(
-          ", "
+          ", ",
         )}) AND issuetype in standardIssueTypes() ` +
-        `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
+        `AND issuetype != Epic AND issuetype NOT IN (${bugIssueTypes.join(",")}) AND created >= -${numDaysOfHistory}d`;
       const otherTicketCount = (
         await issuesForSearchQuery(otherTicketsQuery, 0)
       ).total;
@@ -244,23 +248,27 @@ export const jiraClient = async (
     },
     /**
      * Gets the new story ratio for "1 new story [created] every X stories [resolved]" statement.
+     * @bugIssueTypes The issue types that represents bugs, e.g. Bug, Fault
      * @returns Number of new stories created per resolved stories count.
      */
-    fetchDiscoveryRatio: async (jiraProjectIDs: readonly string[]) => {
+    fetchDiscoveryRatio: async (
+      jiraProjectIDs: readonly string[],
+      bugIssueTypes: readonly string[],
+    ) => {
       // TODO: this should only count created tickets if they are higher in the backlog than the target ticket or they are already in progress or done.
       // See https://github.com/agiledigital-labs/probabilistic-forecast/issues/1
       const nonBugTicketsCreatedQuery =
         `project in (${jiraProjectIDs.join(
-          ", "
+          ", ",
         )}) AND issuetype in standardIssueTypes() ` +
-        `AND issuetype != Epic AND issuetype != Fault AND created >= -${numDaysOfHistory}d`;
+        `AND issuetype != Epic AND issuetype NOT IN (${bugIssueTypes.join(",")}) AND created >= -${numDaysOfHistory}d`;
       const nonBugTicketsCreatedCount = (
         await issuesForSearchQuery(nonBugTicketsCreatedQuery, 0)
       ).total;
 
       const ticketsResolvedQuery =
         `project in (${jiraProjectIDs.join(
-          ", "
+          ", ",
         )}) AND issuetype in standardIssueTypes() ` +
         `AND issuetype != Epic AND resolved >= -${numDaysOfHistory}d`;
       const ticketsResolvedCount = (
@@ -282,7 +290,7 @@ export const jiraClient = async (
             board,
             inProgressOrToDoJql,
             kanbanInProgressJql,
-            kanbanToDoJql
+            kanbanToDoJql,
           );
     },
   };

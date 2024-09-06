@@ -17,7 +17,7 @@ export const calculateTicketTarget = async (
   jiraBoardID: string,
   jiraTicketID: string,
   tickets: TicketResponse,
-  userSuppliedTicketTarget: number
+  userSuppliedTicketTarget: number,
 ): Promise<{
   numberOfTicketsAboveTarget: number;
   lowTicketTarget: number;
@@ -28,7 +28,7 @@ export const calculateTicketTarget = async (
   const numberOfTicketsAboveTarget = tickets.issues.indexOf(jiraTicketID);
   if (numberOfTicketsAboveTarget === -1) {
     throw new Error(
-      `Ticket ${jiraTicketID} not found in ticket list for board ${jiraBoardID}`
+      `Ticket ${jiraTicketID} not found in ticket list for board ${jiraBoardID}`,
     );
   }
 
@@ -47,7 +47,7 @@ export const calculateTicketTarget = async (
     //       should we treat the two ratios differently, since more bugs tend to be created by
     //       feature tickets and bugs usually don't take as long as features?
     highTicketTarget: Math.round(
-      ticketTarget + ticketTarget / bugRatio + ticketTarget / discoveryRatio
+      ticketTarget + ticketTarget / bugRatio + ticketTarget / discoveryRatio,
     ),
   };
 };
@@ -67,7 +67,7 @@ export const calculateTicketTarget = async (
 export const simulations = async (
   resolvedTicketCounts: readonly number[],
   ticketTarget: number,
-  numSimulations: number
+  numSimulations: number,
 ): Promise<readonly number[]> => {
   const results: number[] = Array(numSimulations).fill(0);
 
@@ -82,9 +82,8 @@ export const simulations = async (
     let storiesDone = 0;
     while (storiesDone <= ticketTarget) {
       const numTimeIntervals = resolvedTicketCounts.length;
-      storiesDone += resolvedTicketCounts[
-        Math.floor(Math.random() * numTimeIntervals)
-      ]!;
+      storiesDone +=
+        resolvedTicketCounts[Math.floor(Math.random() * numTimeIntervals)]!;
       results[i]!++;
     }
   }
@@ -105,11 +104,11 @@ export const printPredictions = (
   simulationResults: readonly number[],
   numSimulations: number,
   confidencePercentageThreshold: number,
-  durationInDays: number
+  durationInDays: number,
 ) => {
   console.log(
     `Amount of time required to ship ${lowTicketTarget} to ${highTicketTarget} tickets ` +
-      `(and the number of simulations that arrived at that result):`
+      `(and the number of simulations that arrived at that result):`,
   );
 
   const percentages: Record<string, number> = {};
@@ -160,11 +159,11 @@ export const printPredictions = (
     console.log(
       `${Number(numIntervalsPredicted) * durationInDays} days, ` +
         `${Math.floor(
-          cumulativePercentages[numIntervalsPredicted] ?? 0
+          cumulativePercentages[numIntervalsPredicted] ?? 0,
         )}% confidence ` +
         `(${numSimulationsPredicting[numIntervalsPredicted]} simulation` +
         // Pluralize
-        `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`
+        `${numSimulationsPredicting[numIntervalsPredicted] === 1 ? "" : "s"})`,
     );
   }
 
@@ -176,6 +175,6 @@ export const printPredictions = (
     }% confident all ` +
       `${lowTicketTarget} to ${highTicketTarget} tickets will take no more than ${
         Number(resultAboveThreshold) * durationInDays
-      } days to complete.`
+      } days to complete.`,
   );
 };
