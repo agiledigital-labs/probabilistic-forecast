@@ -6,7 +6,7 @@
   "devDependencies": {
     "@types/jira-client": "^7.1.9",
     "@types/oauth": "^0.9.5",
-    "prettier": "3.3.3",
+    "prettier": "3.9.6",
     "ts-node": "10.9.2",
     "type-coverage": "2.29.1",
     "typescript": "5.5.4"
